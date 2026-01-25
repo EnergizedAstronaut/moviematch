@@ -2,18 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Search,
-  Film,
-  Check,
-  Plus,
-  X,
-  Play,
-  Star,
-  TrendingUp,
-  ExternalLink,
-  Users,
-  Heart,
-  Sparkles
+  Search, Film, Plus, X, Play, Star,
+  TrendingUp, ExternalLink, Users, Heart, Sparkles
 } from "lucide-react";
 
 const MovieTracker = () => {
@@ -34,10 +24,9 @@ const MovieTracker = () => {
   const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
+  // ONLY run on client
   useEffect(() => {
-    // Only run in browser
     if (typeof window === "undefined") return;
-
     loadFromStorage();
     fetchTrending();
   }, []);
@@ -61,7 +50,6 @@ const MovieTracker = () => {
 
   const fetchTrending = async () => {
     if (!TMDB_API_KEY) return;
-
     try {
       const response = await fetch(
         `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`
@@ -74,7 +62,7 @@ const MovieTracker = () => {
   };
 
   const searchMovies = async (query) => {
-    if (!query.trim() || !TMDB_API_KEY) {
+    if (!query.trim()) {
       setSearchResults([]);
       return;
     }
@@ -93,8 +81,6 @@ const MovieTracker = () => {
   };
 
   const fetchMovieDetails = async (movieId) => {
-    if (!TMDB_API_KEY) return;
-
     setLoading(true);
     try {
       const [detailsResponse, creditsResponse, externalIdsResponse] = await Promise.all([
@@ -150,8 +136,6 @@ const MovieTracker = () => {
   const isInPerson2 = (movieId) => person2Movies.some(m => m.id === movieId);
 
   const generateRecommendations = async () => {
-    if (!TMDB_API_KEY) return;
-
     setLoading(true);
     setShowRecommendations(true);
 
@@ -517,6 +501,7 @@ const MovieTracker = () => {
           </button>
         </div>
 
+        {/* Togetherness Mode toggle */}
         <div className="flex items-center gap-3 mb-6">
           <button
             onClick={() => setTogethernessMode(!togethernessMode)}
@@ -564,4 +549,149 @@ const MovieTracker = () => {
             ) : (
               <div>
                 <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp classNam
+                  <TrendingUp className="w-6 h-6 text-red-500" />
+                  <h2 className="text-2xl font-bold">Trending This Week</h2>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {trendingMovies.map(movie => (
+                    <MovieCard
+                      key={movie.id}
+                      movie={movie}
+                      onSelect={(m) => fetchMovieDetails(m.id)}
+                      showActions={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "compare" && (
+          <div>
+            {commonMovies.length > 0 && (
+              <div className="mb-8 bg-gradient-to-r from-pink-900 to-purple-900 rounded-lg p-6">
+                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                  <Heart className="w-6 h-6 text-pink-400 fill-current" />
+                  Movies You Both Like ({commonMovies.length})
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {commonMovies.map(movie => (
+                    <MovieCard
+                      key={movie.id}
+                      movie={movie}
+                      onSelect={(m) => fetchMovieDetails(m.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-8">
+              <div className="bg-blue-900 bg-opacity-20 rounded-lg p-6">
+                <h2 className="text-2xl font-bold mb-4 text-blue-400">
+                  {person1Name}'s Movies ({person1Movies.length})
+                </h2>
+                {person1Movies.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No movies added yet</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {person1Movies.map(movie => (
+                      <MovieCard
+                        key={movie.id}
+                        movie={movie}
+                        onSelect={(m) => fetchMovieDetails(m.id)}
+                        personNum={1}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-purple-900 bg-opacity-20 rounded-lg p-6">
+                <h2 className="text-2xl font-bold mb-4 text-purple-400">
+                  {person2Name}'s Movies ({person2Movies.length})
+                </h2>
+                {person2Movies.length === 0 ? (
+                  <p className="text-gray-400 text-center py-8">No movies added yet</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    {person2Movies.map(movie => (
+                      <MovieCard
+                        key={movie.id}
+                        movie={movie}
+                        onSelect={(m) => fetchMovieDetails(m.id)}
+                        personNum={2}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "recommendations" && (
+          <div>
+            {togethernessMode && (
+              <div className="mb-6 bg-gradient-to-r from-pink-900 to-purple-900 rounded-lg p-6">
+                <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
+                  <Heart className="w-6 h-6 text-pink-400 fill-current" />
+                  ✨ Togetherness Mode
+                </h2>
+                <p className="text-gray-300 text-sm">
+                  These picks are tuned for shared tastes, top ratings, and mutual vibes.
+                </p>
+              </div>
+            )}
+
+            <div className="bg-gradient-to-r from-purple-900 to-pink-900 rounded-lg p-6 mb-6">
+              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-yellow-400" />
+                Recommended for Both of You
+              </h2>
+              <p className="text-gray-300 text-sm mb-4">
+                Based on your shared interests and favorite genres
+              </p>
+              <button
+                onClick={generateRecommendations}
+                disabled={loading}
+                className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-semibold px-6 py-2 rounded-lg"
+              >
+                Refresh Recommendations
+              </button>
+            </div>
+
+            {recommendations.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {recommendations.map(movie => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onSelect={(m) => fetchMovieDetails(m.id)}
+                    showActions={true}
+                  />
+                ))}
+              </div>
+            ) : !loading && (
+              <div className="text-center py-12 bg-gray-800 rounded-lg">
+                <p className="text-gray-400">
+                  Add some movies to each person's list to get personalized recommendations!
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {selectedMovie && (
+          <MovieModal
+            movie={selectedMovie}
+            onClose={() => setSelectedMovie(null)}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MovieTracker;
