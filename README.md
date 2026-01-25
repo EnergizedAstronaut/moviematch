@@ -150,21 +150,24 @@ http://localhost:3000
 
 ```
 
----
+
 
 
 ```
 
 🔐 Auth (Placeholder)
 This project includes basic auth routes (/auth/login and /auth/logout), but it currently functions as a placeholder and can be expanded using NextAuth or Supabase.
+
 🌟 Technologies
 Next.js 14
 React 18
 Tailwind CSS
 TMDB API
 Lucide Icons
+
 ⭐ Contributing
 Want to help?
 Feel free to open issues or create pull requests.
+
 📄 License
 This project is open-source and available under the MIT License.
