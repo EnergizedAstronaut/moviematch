@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 
-export default function Dashboard() {
+export default function DashboardPage() {
   const [togethernessMode, setTogethernessMode] = useState(false);
 
   return (
@@ -11,7 +10,7 @@ export default function Dashboard() {
       <header className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Dashboard</h1>
 
-        {/* ✨ Togetherness Mode Toggle */}
+        {/* ✨ Togetherness Mode */}
         <button
           onClick={() => setTogethernessMode(!togethernessMode)}
           className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition
@@ -27,45 +26,38 @@ export default function Dashboard() {
         </button>
       </header>
 
-      {/* Optional banner */}
       {togethernessMode && (
         <div className="mb-6 rounded-lg bg-yellow-400/10 border border-yellow-300/30 p-3 text-sm text-yellow-300">
-          ✨ Togetherness Mode is ON — prioritizing shared favorites
+          ✨ Togetherness Mode is ON — prioritizing shared picks
         </div>
       )}
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Account (no auth yet) */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="font-bold text-lg mb-2">Your Account</h2>
-          <p className="text-gray-300">Login not required (for now)</p>
+          <h2 className="font-bold text-lg mb-2">Account</h2>
+          <p className="text-gray-300 mb-4">
+            Login is not required yet.
+          </p>
 
-          <Link
-            href="/login"
-            className="mt-4 inline-block px-4 py-2 bg-gray-700 rounded-lg"
+          <button
+            disabled
+            className="px-4 py-2 bg-gray-700 text-gray-400 rounded-lg cursor-not-allowed"
           >
             Login (Coming Soon)
-          </Link>
+          </button>
         </div>
 
-        {/* Couple / Features */}
         <div className="bg-gray-800 rounded-xl p-6">
-          <h2 className="font-bold text-lg mb-2">Features</h2>
+          <h2 className="font-bold text-lg mb-4">Features</h2>
 
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link
-              href="/movie"
-              className="px-4 py-2 bg-red-600 rounded-lg"
-            >
+          <div className="flex gap-3 flex-wrap">
+            <a href="/movie" className="px-4 py-2 bg-red-600 rounded-lg">
               Movie Search
-            </Link>
+            </a>
 
-            <Link
-              href="/movie-night"
-              className="px-4 py-2 bg-purple-600 rounded-lg"
-            >
+            <a href="/date-night" className="px-4 py-2 bg-purple-600 rounded-lg">
               Date Night Picker
-            </Link>
+            </a>
           </div>
         </div>
       </div>
