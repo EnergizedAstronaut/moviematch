@@ -1,6 +1,7 @@
 # MovieMatch 🎬
 
-MovieMatch is a Next.js app that helps two people compare their movie tastes and find the best movies to watch together.  
+MovieMatch is a Next.js app that helps two people compare their movie tastes and find the best movies to watch together.
+
 It includes:
 
 - **Togetherness Mode**
@@ -60,13 +61,14 @@ moviematch/
 ```bash
 git clone https://github.com/EnergizedAstronaut/moviematch.git
 cd moviematch
+
 2. Install dependencies
 npm install
 3. Add TMDB API Key
 Create a .env.local file:
 NEXT_PUBLIC_TMDB_API_KEY=YOUR_TMDB_API_KEY
 You can get an API key here: https://www.themoviedb.org/settings/api
-🚀 Run the project
+4. Run the project
 npm run dev
 Open:
 http://localhost:3000
@@ -83,5 +85,3 @@ Want to help?
 Feel free to open issues or create pull requests.
 📄 License
 This project is open-source and available under the MIT License.
-
----
