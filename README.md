@@ -54,6 +54,17 @@ moviematch/
 
 ---
 
+Got it — your **README is missing proper Markdown formatting** so everything is running together as plain text.
+
+Here’s the **fixed section** with proper headings, line breaks, and code blocks so it displays correctly.
+
+---
+
+# ✅ Fix for the “Installation” section
+
+Replace your current installation section with this:
+
+````md
 ## 🛠️ Installation
 
 ### 1. Clone the repo
@@ -61,17 +72,89 @@ moviematch/
 ```bash
 git clone https://github.com/EnergizedAstronaut/moviematch.git
 cd moviematch
+````
 
-2. Install dependencies
+### 2. Install dependencies
+
+```bash
 npm install
-3. Add TMDB API Key
-Create a .env.local file:
+```
+
+### 3. Add TMDB API Key
+
+Create a `.env.local` file:
+
+```env
 NEXT_PUBLIC_TMDB_API_KEY=YOUR_TMDB_API_KEY
-You can get an API key here: https://www.themoviedb.org/settings/api
-4. Run the project
+```
+
+You can get an API key here: [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+
+### 4. Run the project
+
+```bash
 npm run dev
+```
+
 Open:
+
+```
 http://localhost:3000
+```
+
+````
+
+---
+
+# ✅ Your full README section after fixing
+
+Copy/paste this whole block into your README and it will display correctly:
+
+```md
+## 🛠️ Installation
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/EnergizedAstronaut/moviematch.git
+cd moviematch
+````
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Add TMDB API Key
+
+Create a `.env.local` file:
+
+```env
+NEXT_PUBLIC_TMDB_API_KEY=YOUR_TMDB_API_KEY
+```
+
+You can get an API key here: [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
+
+### 4. Run the project
+
+```bash
+npm run dev
+```
+
+Open:
+
+```
+http://localhost:3000
+```
+
+```
+
+---
+
+
+```
+
 🔐 Auth (Placeholder)
 This project includes basic auth routes (/auth/login and /auth/logout), but it currently functions as a placeholder and can be expanded using NextAuth or Supabase.
 🌟 Technologies
