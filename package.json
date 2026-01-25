@@ -1,9 +1,12 @@
 {
   "name": "moviematch",
   "private": true,
+  "homepage": "https://EnergizedAstronaut.github.io/moviematch",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "export": "next build && next export",
+    "deploy": "npm run export && gh-pages -d out",
     "start": "next start"
   },
   "dependencies": {
@@ -18,6 +21,7 @@
   "devDependencies": {
     "tailwindcss": "^3.3.4",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0"
+    "autoprefixer": "^10.4.0",
+    "gh-pages": "^5.0.0"
   }
 }
