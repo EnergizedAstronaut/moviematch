@@ -1,0 +1,87 @@
+# MovieMatch 🎬
+
+MovieMatch is a Next.js app that helps two people compare their movie tastes and find the best movies to watch together.  
+It includes:
+
+- **Togetherness Mode**
+- Movie search powered by TMDB
+- Personalized recommendations based on shared genres
+- Shared watchlist comparison
+- Trending movies section
+- Movie details modal
+- Simple login + dashboard pages (Next.js app structure)
+
+---
+
+## 🚀 Features
+
+### Togetherness Mode
+Compare movie lists between two people and discover shared favorites.
+
+### Search & Add
+Search for movies via TMDB and add them to each person’s list.
+
+### Recommendations
+Get movie suggestions based on shared genres between both lists.
+
+### Watch Together
+View common movies both people like.
+
+---
+
+## 📁 Project Structure
+
+moviematch/
+├─ app/
+│ ├─ layout.jsx
+│ ├─ page.jsx
+│ ├─ dashboard/
+│ │ └─ page.jsx
+│ └─ auth/
+│ ├─ login/
+│ │ └─ page.jsx
+│ └─ logout/
+│ └─ page.jsx
+├─ components/
+│ └─ MovieTracker.jsx
+├─ styles/
+│ └─ globals.css
+├─ tailwind.config.js
+├─ postcss.config.js
+├─ next.config.js
+└─ package.json
+
+---
+
+## 🛠️ Installation
+
+### 1. Clone the repo
+
+```bash
+git clone https://github.com/EnergizedAstronaut/moviematch.git
+cd moviematch
+2. Install dependencies
+npm install
+3. Add TMDB API Key
+Create a .env.local file:
+NEXT_PUBLIC_TMDB_API_KEY=YOUR_TMDB_API_KEY
+You can get an API key here: https://www.themoviedb.org/settings/api
+🚀 Run the project
+npm run dev
+Open:
+http://localhost:3000
+🔐 Auth (Placeholder)
+This project includes basic auth routes (/auth/login and /auth/logout), but it currently functions as a placeholder and can be expanded using NextAuth or Supabase.
+🌟 Technologies
+Next.js 14
+React 18
+Tailwind CSS
+TMDB API
+Lucide Icons
+⭐ Contributing
+Want to help?
+Feel free to open issues or create pull requests.
+📄 License
+This project is open-source and available under the MIT License.
+
+---
