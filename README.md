@@ -109,12 +109,7 @@ http://localhost:3000
 ```
 
 ````
-
----
-
-
-```md
-## 🛠️ Installation
+### 🛠️ Installation
 
 ### 1. Clone the repo
 
