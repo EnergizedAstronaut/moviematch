@@ -19,6 +19,11 @@ const MovieTracker = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [togethernessMode, setTogethernessMode] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showLoadModal, setShowLoadModal] = useState(false);
+  const [listName, setListName] = useState("");
+  const [savedLists, setSavedLists] = useState([]);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -27,6 +32,7 @@ const MovieTracker = () => {
     if (typeof window === "undefined") return;
     loadFromStorage();
     fetchTrending();
+    loadSavedLists();
   }, []);
 
   const loadFromStorage = () => {
@@ -44,6 +50,92 @@ const MovieTracker = () => {
   const saveToStorage = (key, data) => {
     if (typeof window === "undefined") return;
     localStorage.setItem(key, typeof data === "string" ? data : JSON.stringify(data));
+  };
+
+  const loadSavedLists = async () => {
+    try {
+      const result = await window.storage.list("movielist:");
+      if (result && result.keys) {
+        const lists = [];
+        for (const key of result.keys) {
+          const listData = await window.storage.get(key);
+          if (listData && listData.value) {
+            const parsed = JSON.parse(listData.value);
+            lists.push({ key, ...parsed });
+          }
+        }
+        setSavedLists(lists);
+      }
+    } catch (error) {
+      console.log("No saved lists yet");
+    }
+  };
+
+  const saveCurrentList = async () => {
+    if (!listName.trim()) {
+      setSaveMessage("Please enter a list name");
+      return;
+    }
+
+    try {
+      const listData = {
+        name: listName,
+        person1Name,
+        person2Name,
+        person1Movies,
+        person2Movies,
+        savedAt: new Date().toISOString()
+      };
+
+      const key = `movielist:${listName.toLowerCase().replace(/\s+/g, '-')}`;
+      await window.storage.set(key, JSON.stringify(listData));
+      
+      setSaveMessage("✅ List saved successfully!");
+      setTimeout(() => {
+        setShowSaveModal(false);
+        setSaveMessage("");
+        setListName("");
+      }, 1500);
+      
+      loadSavedLists();
+    } catch (error) {
+      setSaveMessage("❌ Error saving list");
+      console.error(error);
+    }
+  };
+
+  const loadList = async (key) => {
+    try {
+      const result = await window.storage.get(key);
+      if (result && result.value) {
+        const data = JSON.parse(result.value);
+        setPerson1Name(data.person1Name);
+        setPerson2Name(data.person2Name);
+        setPerson1Movies(data.person1Movies);
+        setPerson2Movies(data.person2Movies);
+        
+        saveToStorage("person1_name", data.person1Name);
+        saveToStorage("person2_name", data.person2Name);
+        saveToStorage("person1_movies", data.person1Movies);
+        saveToStorage("person2_movies", data.person2Movies);
+        
+        setShowLoadModal(false);
+        setActiveTab("compare");
+      }
+    } catch (error) {
+      console.error("Error loading list:", error);
+    }
+  };
+
+  const deleteList = async (key) => {
+    if (!confirm("Delete this saved list?")) return;
+    
+    try {
+      await window.storage.delete(key);
+      loadSavedLists();
+    } catch (error) {
+      console.error("Error deleting list:", error);
+    }
   };
 
   const fetchTrending = async () => {
@@ -154,7 +246,54 @@ const MovieTracker = () => {
     try {
       let recommendedMovies = [];
 
-      if (commonGenres.length > 0) {
+      if (togethernessMode && commonGenres.length > 0) {
+        // TOGETHERNESS MODE: Focus on shared preferences
+        // Get top 3 common genres weighted by both people's preferences
+        const topCommonGenres = commonGenres
+          .sort((a, b) => (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a]))
+          .slice(0, 3);
+
+        // Fetch movies from each common genre
+        const genrePromises = topCommonGenres.map(genre =>
+          fetch(
+            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0`
+          ).then(r => r.json())
+        );
+
+        const genreResults = await Promise.all(genrePromises);
+        const allResults = genreResults.flatMap(data => data.results || []);
+
+        // Score movies based on how well they match BOTH people's tastes
+        const scoredMovies = allResults.map(movie => {
+          let score = 0;
+          
+          // Bonus for genres both people like
+          const movieGenres = movie.genre_ids || [];
+          const sharedGenreCount = movieGenres.filter(g => 
+            commonGenres.includes(g.toString())
+          ).length;
+          score += sharedGenreCount * 10;
+          
+          // Bonus for high ratings
+          score += movie.vote_average * 2;
+          
+          // Bonus for popularity (but not too much)
+          score += Math.min(movie.popularity / 100, 5);
+          
+          return { ...movie, matchScore: score };
+        });
+
+        // Remove duplicates and sort by match score
+        const uniqueMovies = Array.from(
+          new Map(scoredMovies.map(m => [m.id, m])).values()
+        );
+        
+        recommendedMovies = uniqueMovies
+          .sort((a, b) => b.matchScore - a.matchScore)
+          .slice(0, 12);
+
+      } else if (commonGenres.length > 0) {
+        // NORMAL MODE: Just use top shared genre
         const topGenre = commonGenres.sort((a, b) =>
           (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a])
         )[0];
@@ -165,6 +304,7 @@ const MovieTracker = () => {
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
       } else {
+        // No common genres - show popular movies
         const response = await fetch(
           `${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}`
         );
@@ -173,13 +313,7 @@ const MovieTracker = () => {
       }
 
       const allMovieIds = [...person1Movies, ...person2Movies].map(m => m.id);
-      let filtered = recommendedMovies.filter(m => !allMovieIds.includes(m.id));
-
-      if (togethernessMode && commonGenres.length > 0) {
-        filtered = filtered
-          .filter(m => m.vote_average >= 7)
-          .sort((a, b) => b.vote_average - a.vote_average);
-      }
+      const filtered = recommendedMovies.filter(m => !allMovieIds.includes(m.id));
 
       setRecommendations(filtered);
     } catch (error) {
@@ -368,6 +502,107 @@ const MovieTracker = () => {
     );
   };
 
+  const SaveModal = () => (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
+        <h2 className="text-2xl font-bold mb-4 text-white">Save Your Lists</h2>
+        <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
+        
+        <input
+          type="text"
+          placeholder="e.g., Date Night Favorites"
+          value={listName}
+          onChange={(e) => setListName(e.target.value)}
+          className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          onKeyPress={(e) => e.key === 'Enter' && saveCurrentList()}
+        />
+        
+        {saveMessage && (
+          <p className="text-sm mb-4 text-center">{saveMessage}</p>
+        )}
+        
+        <div className="flex gap-3">
+          <button
+            onClick={() => {
+              setShowSaveModal(false);
+              setListName("");
+              setSaveMessage("");
+            }}
+            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={saveCurrentList}
+            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+          >
+            Save List
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const LoadModal = () => (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-4 text-white">Load Saved Lists</h2>
+        <p className="text-zinc-400 mb-6">Choose a saved list to restore</p>
+        
+        {savedLists.length === 0 ? (
+          <div className="text-center py-12">
+            <Film className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+            <p className="text-zinc-500">No saved lists yet</p>
+            <p className="text-zinc-600 text-sm mt-2">Create some lists and save them first!</p>
+          </div>
+        ) : (
+          <div className="space-y-3 mb-6">
+            {savedLists.map((list) => (
+              <div
+                key={list.key}
+                className="bg-zinc-800 rounded-lg p-4 hover:bg-zinc-750 transition-colors border border-zinc-700"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-white mb-1">{list.name}</h3>
+                    <p className="text-sm text-zinc-400 mb-2">
+                      {list.person1Name} & {list.person2Name}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {list.person1Movies.length + list.person2Movies.length} movies total • 
+                      Saved {new Date(list.savedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => loadList(list.key)}
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      Load
+                    </button>
+                    <button
+                      onClick={() => deleteList(list.key)}
+                      className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <button
+          onClick={() => setShowLoadModal(false)}
+          className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -380,17 +615,36 @@ const MovieTracker = () => {
               </h1>
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
-            <button
-              onClick={() => setTogethernessMode(!togethernessMode)}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                togethernessMode
-                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
-                  : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
-              }`}
-            >
-              <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
-              Togetherness Mode
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSaveModal(true)}
+                className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+              >
+                <Film className="w-5 h-5" />
+                Save Lists
+              </button>
+              <button
+                onClick={() => {
+                  loadSavedLists();
+                  setShowLoadModal(true);
+                }}
+                className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+              >
+                <Play className="w-5 h-5" />
+                Load Lists
+              </button>
+              <button
+                onClick={() => setTogethernessMode(!togethernessMode)}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                  togethernessMode
+                    ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
+                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
+                }`}
+              >
+                <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
+                Togetherness Mode
+              </button>
+            </div>
           </div>
 
           {/* Name Inputs */}
@@ -603,13 +857,34 @@ const MovieTracker = () => {
 
         {activeTab === "recommendations" && (
           <div className="space-y-6">
+            {togethernessMode && (
+              <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
+                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+                  <Sparkles className="w-7 h-7 text-yellow-400" />
+                  ✨ Togetherness Mode Active
+                </h2>
+                <p className="text-zinc-300 mb-2">
+                  Finding movies that match <strong>both</strong> of your tastes:
+                </p>
+                <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
+                  <li>Prioritizing genres you both enjoy</li>
+                  <li>Only showing highly-rated films (7.0+)</li>
+                  <li>Scoring based on shared preferences</li>
+                  <li>Filtering for movies you'll both love</li>
+                </ul>
+              </div>
+            )}
+
             <div className="bg-gradient-to-r from-purple-950/50 to-pink-950/50 backdrop-blur rounded-2xl p-8 border border-purple-900/20">
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
-                <Sparkles className="w-7 h-7 text-yellow-400" />
-                Personalized Recommendations
+                <Heart className="w-7 h-7 text-pink-400" />
+                {togethernessMode ? "Perfect for Both of You" : "Recommended for You"}
               </h2>
               <p className="text-zinc-400 mb-6">
-                Based on your shared tastes and favorite genres
+                {togethernessMode 
+                  ? "These picks are optimized for maximum compatibility"
+                  : "Based on your shared interests and favorite genres"
+                }
               </p>
               <button
                 onClick={generateRecommendations}
@@ -648,6 +923,9 @@ const MovieTracker = () => {
             onClose={() => setSelectedMovie(null)}
           />
         )}
+
+        {showSaveModal && <SaveModal />}
+        {showLoadModal && <LoadModal />}
       </div>
     </div>
   );
