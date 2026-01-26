@@ -47,19 +47,19 @@ View common movies both people like.
 
 moviematch/
 ├─ app/
-│ ├─ layout.jsx
-│ ├─ page.jsx
-│ ├─ dashboard/
-│ │ └─ page.jsx
-│ └─ auth/
-│ ├─ login/
-│ │ └─ page.jsx
-│ └─ logout/
-│ └─ page.jsx
+│  ├─ layout.jsx
+│  ├─ page.jsx
+│  ├─ dashboard/
+│  │  └─ page.jsx
+│  └─ auth/
+│     ├─ login/
+│     │  └─ page.jsx
+│     └─ logout/
+│        └─ page.jsx
 ├─ components/
-│ └─ MovieTracker.jsx
+│  └─ MovieTracker.jsx
 ├─ styles/
-│ └─ globals.css
+│  └─ globals.css
 ├─ tailwind.config.js
 ├─ postcss.config.js
 ├─ next.config.js
