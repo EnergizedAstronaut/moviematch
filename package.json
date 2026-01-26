@@ -1,24 +1,23 @@
 {
   "name": "moviematch",
-  "version": "0.1.0",
   "private": true,
-  "homepage": "https://EnergizedAstronaut.github.io/moviematch",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "export": "next build && next export",
-    "deploy": "gh-pages -d out"
+    "dev": "next dev",             // For development mode
+    "build": "next build",         // For building the app
+    "start": "next start"          // For starting the app in production mode
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "lucide-react": "^0.344.0",
     "next": "^14.2.35",
+    "next-auth": "^4.24.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
-    "lucide-react": "^0.344.0"
+    "stripe": "^14.21.0"
   },
   "devDependencies": {
     "tailwindcss": "^3.3.4",
     "postcss": "^8.4.0",
-    "autoprefixer": "^10.4.0",
-    "gh-pages": "^5.0.0"
+    "autoprefixer": "^10.4.0"
   }
 }
