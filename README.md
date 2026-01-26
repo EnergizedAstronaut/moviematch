@@ -65,8 +65,6 @@ moviematch/
   postcss.config.js
   next.config.js
   package.json
-
----
 ```
 ### 🛠️ Installation
 
