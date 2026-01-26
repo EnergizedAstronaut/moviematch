@@ -24,6 +24,8 @@ const MovieTracker = () => {
   const [listName, setListName] = useState("");
   const [savedLists, setSavedLists] = useState([]);
   const [saveMessage, setSaveMessage] = useState("");
+  const [streamingProviders, setStreamingProviders] = useState(null);
+  const [selectedCountry, setSelectedCountry] = useState("US");
 
   const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -173,19 +175,23 @@ const MovieTracker = () => {
   const fetchMovieDetails = async (movieId) => {
     setLoading(true);
     try {
-      const [detailsResponse, creditsResponse] = await Promise.all([
+      const [detailsResponse, creditsResponse, providersResponse] = await Promise.all([
         fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`),
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`)
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`)
       ]);
 
       const details = await detailsResponse.json();
       const credits = await creditsResponse.json();
+      const providers = await providersResponse.json();
 
       setSelectedMovie({
         ...details,
         cast: credits.cast?.slice(0, 5) || [],
         director: credits.crew?.find(person => person.job === "Director")
       });
+      
+      setStreamingProviders(providers.results?.[selectedCountry] || null);
     } catch (error) {
       console.error("Error fetching movie details:", error);
     }
@@ -410,6 +416,96 @@ const MovieTracker = () => {
   const MovieModal = ({ movie, onClose }) => {
     if (!movie) return null;
 
+    const renderStreamingProviders = () => {
+      if (!streamingProviders) {
+        return (
+          <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
+            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+              <Play className="w-5 h-5 text-red-500" />
+              Where to Watch
+            </h3>
+            <p className="text-zinc-400 text-sm">Streaming info not available for this title</p>
+          </div>
+        );
+      }
+
+      const { flatrate, rent, buy } = streamingProviders;
+
+      return (
+        <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
+          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Play className="w-5 h-5 text-red-500" />
+            Where to Watch
+          </h3>
+
+          {flatrate && flatrate.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-zinc-400 mb-2">Stream</p>
+              <div className="flex flex-wrap gap-3">
+                {flatrate.map((provider) => (
+                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
+                    <img
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                      alt={provider.provider_name}
+                      className="w-12 h-12 rounded-lg border border-zinc-600"
+                      title={provider.provider_name}
+                    />
+                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {rent && rent.length > 0 && (
+            <div className="mb-4">
+              <p className="text-sm font-medium text-zinc-400 mb-2">Rent</p>
+              <div className="flex flex-wrap gap-3">
+                {rent.slice(0, 4).map((provider) => (
+                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
+                    <img
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                      alt={provider.provider_name}
+                      className="w-12 h-12 rounded-lg border border-zinc-600"
+                      title={provider.provider_name}
+                    />
+                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {buy && buy.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-zinc-400 mb-2">Buy</p>
+              <div className="flex flex-wrap gap-3">
+                {buy.slice(0, 4).map((provider) => (
+                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
+                    <img
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                      alt={provider.provider_name}
+                      className="w-12 h-12 rounded-lg border border-zinc-600"
+                      title={provider.provider_name}
+                    />
+                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!flatrate && !rent && !buy && (
+            <p className="text-zinc-400 text-sm">No streaming options available in your region</p>
+          )}
+
+          <p className="text-xs text-zinc-600 mt-4">
+            Streaming data provided by JustWatch
+          </p>
+        </div>
+      );
+    };
+
     return (
       <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 overflow-y-auto">
         <div className="min-h-screen px-4 py-8 flex items-center justify-center">
@@ -483,7 +579,7 @@ const MovieTracker = () => {
                   <p className="text-zinc-300 leading-relaxed mb-6">{movie.overview}</p>
 
                   {movie.genres && movie.genres.length > 0 && (
-                    <div className="mb-4">
+                    <div className="mb-6">
                       <div className="flex flex-wrap gap-2">
                         {movie.genres.map(genre => (
                           <span key={genre.id} className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm">
@@ -495,6 +591,8 @@ const MovieTracker = () => {
                   )}
                 </div>
               </div>
+
+              {renderStreamingProviders()}
             </div>
           </div>
         </div>
