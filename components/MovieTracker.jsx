@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Search, Film, Plus, X, Play, Star,
-  TrendingUp, ExternalLink, Users, Heart, Sparkles
+  Search, Film, Plus, X, Play, Star, Users, Heart, Sparkles, TrendingUp
 } from "lucide-react";
 
 const MovieTracker = () => {
@@ -21,10 +20,9 @@ const MovieTracker = () => {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [togethernessMode, setTogethernessMode] = useState(false);
 
-  const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+  const TMDB_API_KEY = "8e7c8c0f8f3e4a1c9b2d5e6f7a8b9c0d"; // Replace with your actual TMDB API key
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-  // ONLY run on client
   useEffect(() => {
     if (typeof window === "undefined") return;
     loadFromStorage();
@@ -55,7 +53,7 @@ const MovieTracker = () => {
         `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`
       );
       const data = await response.json();
-      setTrendingMovies(data.results?.slice(0, 6) || []);
+      setTrendingMovies(data.results?.slice(0, 12) || []);
     } catch (error) {
       console.error("Error fetching trending:", error);
     }
@@ -83,21 +81,18 @@ const MovieTracker = () => {
   const fetchMovieDetails = async (movieId) => {
     setLoading(true);
     try {
-      const [detailsResponse, creditsResponse, externalIdsResponse] = await Promise.all([
+      const [detailsResponse, creditsResponse] = await Promise.all([
         fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}`),
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}/external_ids?api_key=${TMDB_API_KEY}`)
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`)
       ]);
 
       const details = await detailsResponse.json();
       const credits = await creditsResponse.json();
-      const externalIds = await externalIdsResponse.json();
 
       setSelectedMovie({
         ...details,
         cast: credits.cast?.slice(0, 5) || [],
-        director: credits.crew?.find(person => person.job === "Director"),
-        imdb_id: externalIds.imdb_id
+        director: credits.crew?.find(person => person.job === "Director")
       });
     } catch (error) {
       console.error("Error fetching movie details:", error);
@@ -178,7 +173,6 @@ const MovieTracker = () => {
       }
 
       const allMovieIds = [...person1Movies, ...person2Movies].map(m => m.id);
-
       let filtered = recommendedMovies.filter(m => !allMovieIds.includes(m.id));
 
       if (togethernessMode && commonGenres.length > 0) {
@@ -203,34 +197,36 @@ const MovieTracker = () => {
   const commonMovies = findCommonMovies();
 
   const MovieCard = ({ movie, onSelect, showActions = false, personNum = null }) => (
-    <div className="bg-gray-800 rounded-lg overflow-hidden">
+    <div className="group relative bg-zinc-900/50 backdrop-blur rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
       <div
         onClick={() => onSelect(movie)}
-        className="relative aspect-[2/3] cursor-pointer transform transition hover:scale-105"
+        className="relative aspect-[2/3] cursor-pointer overflow-hidden"
       >
         {movie.poster_path ? (
           <img
             src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
             alt={movie.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
-          <div className="w-full h-full bg-gray-700 flex items-center justify-center">
-            <Film className="w-16 h-16 text-gray-500" />
+          <div className="w-full h-full bg-zinc-800 flex items-center justify-center">
+            <Film className="w-12 h-12 text-zinc-600" />
           </div>
         )}
 
         {movie.vote_average > 0 && (
-          <div className="absolute top-2 right-2 bg-yellow-500 text-black rounded-full px-2 py-1 text-xs font-bold flex items-center gap-1">
-            <Star className="w-3 h-3 fill-current" />
-            {movie.vote_average.toFixed(1)}
+          <div className="absolute top-3 right-3 bg-black/80 backdrop-blur-sm rounded-lg px-2 py-1 flex items-center gap-1">
+            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+            <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
           </div>
         )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       </div>
 
-      <div className="p-3">
+      <div className="p-4">
         <h3 className="font-semibold text-white text-sm line-clamp-2 mb-1">{movie.title}</h3>
-        <p className="text-gray-400 text-xs mb-2">
+        <p className="text-zinc-500 text-xs mb-3">
           {movie.release_date?.split("-")[0] || "N/A"}
         </p>
 
@@ -242,9 +238,9 @@ const MovieTracker = () => {
                   e.stopPropagation();
                   addMovieToPerson(movie, 1);
                 }}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs px-2 py-1 rounded"
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
               >
-                + {person1Name}
+                {person1Name}
               </button>
             )}
             {!isInPerson2(movie.id) && (
@@ -253,9 +249,9 @@ const MovieTracker = () => {
                   e.stopPropagation();
                   addMovieToPerson(movie, 2);
                 }}
-                className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs px-2 py-1 rounded"
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
               >
-                + {person2Name}
+                {person2Name}
               </button>
             )}
           </div>
@@ -267,7 +263,7 @@ const MovieTracker = () => {
               e.stopPropagation();
               removeMovieFromPerson(movie.id, personNum);
             }}
-            className="w-full bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded flex items-center justify-center gap-1"
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
           >
             <X className="w-3 h-3" />
             Remove
@@ -277,132 +273,94 @@ const MovieTracker = () => {
     </div>
   );
 
-  const StreamingServices = ({ info }) => {
-    return (
-      <div className="bg-gray-800 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-          <Play className="w-5 h-5" />
-          Where to Watch
-        </h3>
-        <a
-          href={`https://www.justwatch.com/us/movie/${info?.title?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "movie"}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 text-blue-400 hover:text-blue-300 underline"
-        >
-          View on JustWatch <ExternalLink className="w-4 h-4" />
-        </a>
-      </div>
-    );
-  };
-
   const MovieModal = ({ movie, onClose }) => {
     if (!movie) return null;
 
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-90 z-50 overflow-y-auto">
-        <div className="min-h-screen px-4 py-8">
-          <div className="max-w-4xl mx-auto bg-gray-900 rounded-lg overflow-hidden">
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 overflow-y-auto">
+        <div className="min-h-screen px-4 py-8 flex items-center justify-center">
+          <div className="max-w-4xl w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
             <div className="relative">
               {movie.backdrop_path && (
-                <div className="relative h-96">
+                <div className="relative h-80">
                   <img
                     src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                     alt={movie.title}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/50 to-transparent" />
                 </div>
               )}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 bg-black bg-opacity-50 rounded-full p-2 hover:bg-opacity-75"
+                className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm rounded-full p-2 hover:bg-black/70 transition-colors"
               >
-                <X className="w-6 h-6 text-white" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
-            <div className="p-6 -mt-32 relative z-10">
+            <div className="p-8 -mt-24 relative z-10">
               <div className="flex gap-6 mb-6">
                 {movie.poster_path && (
                   <img
                     src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
                     alt={movie.title}
-                    className="w-48 rounded-lg shadow-2xl flex-shrink-0"
+                    className="w-40 rounded-xl shadow-2xl flex-shrink-0 border border-zinc-800"
                   />
                 )}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-3xl font-bold text-white mb-2">{movie.title}</h2>
                   {movie.tagline && (
-                    <p className="text-gray-400 italic mb-4">{movie.tagline}</p>
+                    <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>
                   )}
 
                   <div className="flex items-center gap-4 mb-4 flex-wrap">
                     {movie.vote_average > 0 && (
-                      <div className="flex items-center gap-1 bg-yellow-500 text-black rounded-full px-3 py-1 font-bold">
+                      <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold">
                         <Star className="w-4 h-4 fill-current" />
                         {movie.vote_average.toFixed(1)}
                       </div>
                     )}
-                    <span className="text-gray-400">{movie.release_date?.split("-")[0]}</span>
-                    {movie.runtime && <span className="text-gray-400">{movie.runtime} min</span>}
+                    <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
+                    {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
                   </div>
 
-                  <div className="flex gap-2 mb-4 flex-wrap">
+                  <div className="flex gap-3 mb-6">
                     {!isInPerson1(movie.id) && (
                       <button
                         onClick={() => addMovieToPerson(movie, 1)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                       >
                         <Plus className="w-5 h-5" />
-                        Add to {person1Name}
+                        {person1Name}
                       </button>
                     )}
                     {!isInPerson2(movie.id) && (
                       <button
                         onClick={() => addMovieToPerson(movie, 2)}
-                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition"
+                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"
                       >
                         <Plus className="w-5 h-5" />
-                        Add to {person2Name}
+                        {person2Name}
                       </button>
                     )}
                   </div>
 
-                  <p className="text-gray-300 mb-4">{movie.overview}</p>
+                  <p className="text-zinc-300 leading-relaxed mb-6">{movie.overview}</p>
 
-                  {movie.genres && (
+                  {movie.genres && movie.genres.length > 0 && (
                     <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-gray-400 mb-2">Genres</h3>
                       <div className="flex flex-wrap gap-2">
                         {movie.genres.map(genre => (
-                          <span key={genre.id} className="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-sm">
+                          <span key={genre.id} className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm">
                             {genre.name}
                           </span>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {movie.director && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-gray-400 mb-1">Director</h3>
-                      <p className="text-gray-300">{movie.director.name}</p>
-                    </div>
-                  )}
-
-                  {movie.cast?.length > 0 && (
-                    <div className="mb-4">
-                      <h3 className="text-sm font-semibold text-gray-400 mb-2">Cast</h3>
-                      <p className="text-gray-300 text-sm">
-                        {movie.cast.map(actor => actor.name).join(", ")}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
-
-              <StreamingServices info={{ title: movie.title }} />
             </div>
           </div>
         </div>
@@ -411,121 +369,118 @@ const MovieTracker = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <header className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="w-10 h-10 text-red-500" />
-            <h1 className="text-4xl font-bold">MovieMatch</h1>
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-12">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent mb-2">
+                MovieMatch
+              </h1>
+              <p className="text-zinc-400">Discover movies you'll both love</p>
+            </div>
+            <button
+              onClick={() => setTogethernessMode(!togethernessMode)}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                togethernessMode
+                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
+                  : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
+              }`}
+            >
+              <Heart className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
+              Togetherness Mode
+            </button>
           </div>
-          <p className="text-gray-400 text-sm mb-6">Compare tastes & get movie recommendations for two people</p>
 
+          {/* Name Inputs */}
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="text-gray-400 text-sm mb-1 block">Person 1 Name</label>
-              <input
-                type="text"
-                value={person1Name}
-                onChange={(e) => {
-                  setPerson1Name(e.target.value);
-                  saveToStorage("person1_name", e.target.value);
-                }}
-                className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="text-gray-400 text-sm mb-1 block">Person 2 Name</label>
-              <input
-                type="text"
-                value={person2Name}
-                onChange={(e) => {
-                  setPerson2Name(e.target.value);
-                  saveToStorage("person2_name", e.target.value);
-                }}
-                className="w-full bg-gray-800 text-white px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Search for movies to add..."
+              value={person1Name}
+              onChange={(e) => {
+                setPerson1Name(e.target.value);
+                saveToStorage("person1_name", e.target.value);
+              }}
+              placeholder="First person's name"
+              className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            />
+            <input
+              type="text"
+              value={person2Name}
+              onChange={(e) => {
+                setPerson2Name(e.target.value);
+                saveToStorage("person2_name", e.target.value);
+              }}
+              placeholder="Second person's name"
+              className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+            />
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-zinc-500 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search for movies..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
                 searchMovies(e.target.value);
               }}
-              className="w-full bg-gray-800 text-white pl-12 pr-4 py-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"
             />
           </div>
-        </header>
+        </div>
 
-        <div className="flex gap-4 mb-6 flex-wrap">
+        {/* Tabs */}
+        <div className="flex gap-3 mb-8 border-b border-zinc-800 pb-px">
           <button
             onClick={() => setActiveTab("search")}
-            className={`px-6 py-2 rounded-lg transition ${
+            className={`px-6 py-3 rounded-t-lg font-medium transition-all ${
               activeTab === "search"
-                ? "bg-red-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                ? "bg-zinc-900 text-white border-b-2 border-red-500"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Search className="w-5 h-5 inline mr-2" />
-            Search
+            Discover
           </button>
           <button
             onClick={() => setActiveTab("compare")}
-            className={`px-6 py-2 rounded-lg transition ${
+            className={`px-6 py-3 rounded-t-lg font-medium transition-all ${
               activeTab === "compare"
-                ? "bg-red-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                ? "bg-zinc-900 text-white border-b-2 border-red-500"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Users className="w-5 h-5 inline mr-2" />
-            Compare Lists
+            Your Lists
+            {commonMovies.length > 0 && (
+              <span className="ml-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full">
+                {commonMovies.length}
+              </span>
+            )}
           </button>
           <button
             onClick={() => {
               setActiveTab("recommendations");
               if (!showRecommendations) generateRecommendations();
             }}
-            className={`px-6 py-2 rounded-lg transition ${
+            className={`px-6 py-3 rounded-t-lg font-medium transition-all ${
               activeTab === "recommendations"
-                ? "bg-red-600 text-white"
-                : "bg-gray-800 text-gray-400 hover:bg-gray-700"
+                ? "bg-zinc-900 text-white border-b-2 border-red-500"
+                : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
             <Sparkles className="w-5 h-5 inline mr-2" />
-            Recommendations
+            For You
           </button>
         </div>
 
-        {/* Togetherness Mode toggle */}
-        <div className="flex items-center gap-3 mb-6">
-          <button
-            onClick={() => setTogethernessMode(!togethernessMode)}
-            className={`px-6 py-3 rounded-lg font-semibold transition flex items-center gap-2
-              ${
-                togethernessMode
-                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white"
-                  : "bg-gray-800 text-gray-400 hover:bg-gray-700"
-              }
-            `}
-          >
-            <Heart className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
-            ✨ Togetherness Mode
-          </button>
-
-          {togethernessMode && (
-            <span className="text-sm text-pink-300 italic">
-              Prioritizing shared vibes & mutual favorites
-            </span>
-          )}
-        </div>
-
+        {/* Content */}
         {loading && (
-          <div className="text-center py-12">
+          <div className="text-center py-20">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"></div>
           </div>
         )}
@@ -533,26 +488,23 @@ const MovieTracker = () => {
         {activeTab === "search" && !loading && (
           <div>
             {searchResults.length > 0 ? (
-              <div>
-                <h2 className="text-2xl font-bold mb-4">Search Results</h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {searchResults.map(movie => (
-                    <MovieCard
-                      key={movie.id}
-                      movie={movie}
-                      onSelect={(m) => fetchMovieDetails(m.id)}
-                      showActions={true}
-                    />
-                  ))}
-                </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {searchResults.map(movie => (
+                  <MovieCard
+                    key={movie.id}
+                    movie={movie}
+                    onSelect={(m) => fetchMovieDetails(m.id)}
+                    showActions={true}
+                  />
+                ))}
               </div>
             ) : (
               <div>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-3 mb-6">
                   <TrendingUp className="w-6 h-6 text-red-500" />
                   <h2 className="text-2xl font-bold">Trending This Week</h2>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {trendingMovies.map(movie => (
                     <MovieCard
                       key={movie.id}
@@ -568,14 +520,14 @@ const MovieTracker = () => {
         )}
 
         {activeTab === "compare" && (
-          <div>
+          <div className="space-y-8">
             {commonMovies.length > 0 && (
-              <div className="mb-8 bg-gradient-to-r from-pink-900 to-purple-900 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
-                  <Heart className="w-6 h-6 text-pink-400 fill-current" />
-                  Movies You Both Like ({commonMovies.length})
+              <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                  <Heart className="w-7 h-7 text-pink-400 fill-pink-400" />
+                  Perfect Match ({commonMovies.length})
                 </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                   {commonMovies.map(movie => (
                     <MovieCard
                       key={movie.id}
@@ -587,15 +539,24 @@ const MovieTracker = () => {
               </div>
             )}
 
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="bg-blue-900 bg-opacity-20 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-4 text-blue-400">
-                  {person1Name}'s Movies ({person1Movies.length})
+            <div className="grid lg:grid-cols-2 gap-6">
+              <div className="bg-zinc-900/50 backdrop-blur rounded-2xl p-6 border border-zinc-800">
+                <h2 className="text-xl font-bold mb-4 text-blue-400">
+                  {person1Name}'s List ({person1Movies.length})
                 </h2>
                 {person1Movies.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No movies added yet</p>
+                  <div className="text-center py-16">
+                    <Film className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
+                    <p className="text-zinc-500 mb-4">No movies yet</p>
+                    <button
+                      onClick={() => setActiveTab('search')}
+                      className="text-blue-400 hover:text-blue-300 font-medium"
+                    >
+                      Start adding movies →
+                    </button>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {person1Movies.map(movie => (
                       <MovieCard
                         key={movie.id}
@@ -608,14 +569,23 @@ const MovieTracker = () => {
                 )}
               </div>
 
-              <div className="bg-purple-900 bg-opacity-20 rounded-lg p-6">
-                <h2 className="text-2xl font-bold mb-4 text-purple-400">
-                  {person2Name}'s Movies ({person2Movies.length})
+              <div className="bg-zinc-900/50 backdrop-blur rounded-2xl p-6 border border-zinc-800">
+                <h2 className="text-xl font-bold mb-4 text-purple-400">
+                  {person2Name}'s List ({person2Movies.length})
                 </h2>
                 {person2Movies.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No movies added yet</p>
+                  <div className="text-center py-16">
+                    <Film className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
+                    <p className="text-zinc-500 mb-4">No movies yet</p>
+                    <button
+                      onClick={() => setActiveTab('search')}
+                      className="text-purple-400 hover:text-purple-300 font-medium"
+                    >
+                      Start adding movies →
+                    </button>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {person2Movies.map(movie => (
                       <MovieCard
                         key={movie.id}
@@ -632,38 +602,26 @@ const MovieTracker = () => {
         )}
 
         {activeTab === "recommendations" && (
-          <div>
-            {togethernessMode && (
-              <div className="mb-6 bg-gradient-to-r from-pink-900 to-purple-900 rounded-lg p-6">
-                <h2 className="text-2xl font-bold flex items-center gap-2 mb-2">
-                  <Heart className="w-6 h-6 text-pink-400 fill-current" />
-                  ✨ Togetherness Mode
-                </h2>
-                <p className="text-gray-300 text-sm">
-                  These picks are tuned for shared tastes, top ratings, and mutual vibes.
-                </p>
-              </div>
-            )}
-
-            <div className="bg-gradient-to-r from-purple-900 to-pink-900 rounded-lg p-6 mb-6">
-              <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
-                <Sparkles className="w-6 h-6 text-yellow-400" />
-                Recommended for Both of You
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-purple-950/50 to-pink-950/50 backdrop-blur rounded-2xl p-8 border border-purple-900/20">
+              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+                <Sparkles className="w-7 h-7 text-yellow-400" />
+                Personalized Recommendations
               </h2>
-              <p className="text-gray-300 text-sm mb-4">
-                Based on your shared interests and favorite genres
+              <p className="text-zinc-400 mb-6">
+                Based on your shared tastes and favorite genres
               </p>
               <button
                 onClick={generateRecommendations}
                 disabled={loading}
-                className="bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-semibold px-6 py-2 rounded-lg"
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 disabled:from-zinc-700 disabled:to-zinc-800 text-white font-semibold px-6 py-3 rounded-xl transition-all"
               >
                 Refresh Recommendations
               </button>
             </div>
 
             {recommendations.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
                 {recommendations.map(movie => (
                   <MovieCard
                     key={movie.id}
@@ -674,9 +632,10 @@ const MovieTracker = () => {
                 ))}
               </div>
             ) : !loading && (
-              <div className="text-center py-12 bg-gray-800 rounded-lg">
-                <p className="text-gray-400">
-                  Add some movies to each person's list to get personalized recommendations!
+              <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+                <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                <p className="text-zinc-500 text-lg">
+                  Add movies to both lists to get personalized recommendations
                 </p>
               </div>
             )}
