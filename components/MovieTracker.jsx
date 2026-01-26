@@ -32,13 +32,20 @@ const MovieTracker = () => {
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
   const countries = [
-  { code: "US", name: "United States", flag: "🇺🇸" },
-  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
-  { code: "JP", name: "Japan", flag: "🇯🇵" },
-  { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
-  { code: "IN", name: "India", flag: "🇮🇳" },
-];
-
+    { code: "US", name: "United States", flag: "🇺🇸" },
+    { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+    { code: "CA", name: "Canada", flag: "🇨🇦" },
+    { code: "AU", name: "Australia", flag: "🇦🇺" },
+    { code: "DE", name: "Germany", flag: "🇩🇪" },
+    { code: "FR", name: "France", flag: "🇫🇷" },
+    { code: "ES", name: "Spain", flag: "🇪🇸" },
+    { code: "IT", name: "Italy", flag: "🇮🇹" },
+    { code: "MX", name: "Mexico", flag: "🇲🇽" },
+    { code: "BR", name: "Brazil", flag: "🇧🇷" },
+    { code: "IN", name: "India", flag: "🇮🇳" },
+    { code: "JP", name: "Japan", flag: "🇯🇵" },
+    { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
+  ];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -428,21 +435,6 @@ const MovieTracker = () => {
 
     const currentCountry = countries.find(c => c.code === selectedCountry) || countries[0];
 
-    const getProviderUrl = (providerName) => {
-      const urlMap = {
-        'Netflix': 'https://www.netflix.com',
-        'Amazon Prime Video': 'https://www.amazon.com/primevideo',
-        'Disney Plus': 'https://www.disneyplus.com',
-        'Hulu': 'https://www.hulu.com',
-        'HBO Max': 'https://www.hbomax.com',
-        'Apple TV Plus': 'https://tv.apple.com',
-        'Paramount Plus': 'https://www.paramountplus.com',
-        'Peacock': 'https://www.peacocktv.com',
-        'Crunchyroll': 'https://www.crunchyroll.com',
-      };
-      return urlMap[providerName] || '#';
-    };
-
     const renderStreamingProviders = () => {
       if (!streamingProviders) {
         return (
@@ -492,6 +484,9 @@ const MovieTracker = () => {
       }
 
       const { flatrate, rent, buy, link } = streamingProviders;
+      
+      // Use the JustWatch link from TMDB for all providers
+      const justWatchLink = link || `https://www.justwatch.com`;
 
       return (
         <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
@@ -541,11 +536,11 @@ const MovieTracker = () => {
                 {flatrate.map((provider) => (
                   <a
                     key={provider.provider_id}
-                    href={getProviderUrl(provider.provider_name)}
+                    href={justWatchLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1 group cursor-pointer"
-                    title={`Watch on ${provider.provider_name}`}
+                    title={`Watch ${movie.title} on ${provider.provider_name} via JustWatch`}
                   >
                     <div className="relative">
                       <img
@@ -571,11 +566,11 @@ const MovieTracker = () => {
                 {rent.slice(0, 4).map((provider) => (
                   <a
                     key={provider.provider_id}
-                    href={getProviderUrl(provider.provider_name)}
+                    href={justWatchLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1 group cursor-pointer"
-                    title={`Rent on ${provider.provider_name}`}
+                    title={`Rent ${movie.title} on ${provider.provider_name} via JustWatch`}
                   >
                     <div className="relative">
                       <img
@@ -601,11 +596,11 @@ const MovieTracker = () => {
                 {buy.slice(0, 4).map((provider) => (
                   <a
                     key={provider.provider_id}
-                    href={getProviderUrl(provider.provider_name)}
+                    href={justWatchLink}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex flex-col items-center gap-1 group cursor-pointer"
-                    title={`Buy on ${provider.provider_name}`}
+                    title={`Buy ${movie.title} on ${provider.provider_name} via JustWatch`}
                   >
                     <div className="relative">
                       <img
