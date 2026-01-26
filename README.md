@@ -1,7 +1,9 @@
 # MovieMatch 🎬
 
-MovieMatch is a Next.js app that helps two people compare their movie tastes and find the best movies to watch together.
+MovieMatch is a Next.js app that helps two people compare their movie tastes and find the best movies to watch together. 
+MovieMatch highlights shared favorites and recommends movies you’ll both enjoy.
 
+🔗 Live demo: https://moviematch-gamma.vercel.app
 It includes:
 
 - **Togetherness Mode**
@@ -154,9 +156,6 @@ http://localhost:3000
 
 
 ```
-
-🔐 Auth (Placeholder)
-This project includes basic auth routes (/auth/login and /auth/logout), but it currently functions as a placeholder and can be expanded using NextAuth or Supabase.
 
 🌟 Technologies
 Next.js 14
