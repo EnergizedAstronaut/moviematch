@@ -71,6 +71,7 @@ moviematch/
 ---
 ````
 ````md
+````
 ## 🛠️ Installation
 
 ### 1. Clone the repo
