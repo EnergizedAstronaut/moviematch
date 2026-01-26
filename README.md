@@ -45,8 +45,6 @@ View common movies both people like.
 
 ## 📁 Project Structure
 
-## 📁 Project Structure
-
 ```text
 moviematch/
   app/
