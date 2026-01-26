@@ -20,7 +20,7 @@ const MovieTracker = () => {
   const [showRecommendations, setShowRecommendations] = useState(false);
   const [togethernessMode, setTogethernessMode] = useState(false);
 
-  const TMDB_API_KEY = "8e7c8c0f8f3e4a1c9b2d5e6f7a8b9c0d"; // Replace with your actual TMDB API key
+  const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
   useEffect(() => {
@@ -388,7 +388,7 @@ const MovieTracker = () => {
                   : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
               }`}
             >
-              <Heart className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
+              <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
               Togetherness Mode
             </button>
           </div>
@@ -473,7 +473,7 @@ const MovieTracker = () => {
                 : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            <Sparkles className="w-5 h-5 inline mr-2" />
+            <Heart className="w-5 h-5 inline mr-2" />
             For You
           </button>
         </div>
