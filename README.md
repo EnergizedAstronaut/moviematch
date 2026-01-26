@@ -78,7 +78,6 @@ Follow these steps to get MovieMatch running locally:
 git clone https://github.com/EnergizedAstronaut/moviematch.git
 cd moviematch
 
-
 ```
 ### 2. Install dependencies
 
