@@ -4,6 +4,11 @@ MovieMatch is a Next.js app that helps two people compare their movie tastes and
 MovieMatch highlights shared favorites and recommends movies you’ll both enjoy.
 
 🔗 Live demo: https://moviematch-gamma.vercel.app
+<img width="1279" height="1149" alt="Screenshot 2026-01-26 at 11 28 20" src="https://github.com/user-attachments/assets/f47b8c47-e56d-4b28-b282-cfcd8848941b" />
+<img width="1236" height="1092" alt="Screenshot 2026-01-26 at 11 29 37" src="https://github.com/user-attachments/assets/a3810f5f-bb64-4636-b610-a49b861bf458" />
+<img width="1266" height="898" alt="Screenshot 2026-01-26 at 11 30 43" src="https://github.com/user-attachments/assets/682e5192-06fe-4222-b92d-f2f878b75475" />
+
+
 It includes:
 
 - **Togetherness Mode**
