@@ -45,25 +45,28 @@ View common movies both people like.
 
 ## 📁 Project Structure
 
+## 📁 Project Structure
+
+```text
 moviematch/
-├─ app/
-│  ├─ layout.jsx
-│  ├─ page.jsx
-│  ├─ dashboard/
-│  │  └─ page.jsx
-│  └─ auth/
-│     ├─ login/
-│     │  └─ page.jsx
-│     └─ logout/
-│        └─ page.jsx
-├─ components/
-│  └─ MovieTracker.jsx
-├─ styles/
-│  └─ globals.css
-├─ tailwind.config.js
-├─ postcss.config.js
-├─ next.config.js
-└─ package.json
+  app/
+    layout.jsx
+    page.jsx
+    dashboard/
+      page.jsx
+    auth/
+      login/
+        page.jsx
+      logout/
+        page.jsx
+  components/
+    MovieTracker.jsx
+  styles/
+    globals.css
+  tailwind.config.js
+  postcss.config.js
+  next.config.js
+  package.json
 
 ---
 
