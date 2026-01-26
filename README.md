@@ -67,12 +67,6 @@ moviematch/
 
 ---
 
-Got it — your **README is missing proper Markdown formatting** so everything is running together as plain text.
-
-Here’s the **fixed section** with proper headings, line breaks, and code blocks so it displays correctly.
-
----
-
 # ✅ Fix for the “Installation” section
 
 Replace your current installation section with this:
