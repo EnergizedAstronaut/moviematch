@@ -69,17 +69,19 @@ moviematch/
   package.json
 
 ---
-
-````
+```
 ### 🛠️ Installation
 
-### 1. Clone the repo
+Follow these steps to get MovieMatch running locally:
+
+1. **Clone the repository**
 
 ```bash
 git clone https://github.com/EnergizedAstronaut/moviematch.git
 cd moviematch
-````
 
+
+```
 ### 2. Install dependencies
 
 ```bash
