@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Search, Film, Plus, X, Play, Star, Users, Heart, Sparkles, TrendingUp
+  Search, Film, Plus, X, Play, Star, Users, Heart, Sparkles, TrendingUp, ExternalLink, Globe
 } from "lucide-react";
 
 const MovieTracker = () => {
@@ -26,9 +26,19 @@ const MovieTracker = () => {
   const [saveMessage, setSaveMessage] = useState("");
   const [streamingProviders, setStreamingProviders] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState("US");
+  const [showCountrySelector, setShowCountrySelector] = useState(false);
 
   const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+
+  const countries = [
+  { code: "US", name: "United States", flag: "🇺🇸" },
+  { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+  { code: "JP", name: "Japan", flag: "🇯🇵" },
+  { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
+  { code: "IN", name: "India", flag: "🇮🇳" },
+];
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -416,42 +426,139 @@ const MovieTracker = () => {
   const MovieModal = ({ movie, onClose }) => {
     if (!movie) return null;
 
+    const currentCountry = countries.find(c => c.code === selectedCountry) || countries[0];
+
+    const getProviderUrl = (providerName) => {
+      const urlMap = {
+        'Netflix': 'https://www.netflix.com',
+        'Amazon Prime Video': 'https://www.amazon.com/primevideo',
+        'Disney Plus': 'https://www.disneyplus.com',
+        'Hulu': 'https://www.hulu.com',
+        'HBO Max': 'https://www.hbomax.com',
+        'Apple TV Plus': 'https://tv.apple.com',
+        'Paramount Plus': 'https://www.paramountplus.com',
+        'Peacock': 'https://www.peacocktv.com',
+        'Crunchyroll': 'https://www.crunchyroll.com',
+      };
+      return urlMap[providerName] || '#';
+    };
+
     const renderStreamingProviders = () => {
       if (!streamingProviders) {
         return (
           <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
-            <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-              <Play className="w-5 h-5 text-red-500" />
-              Where to Watch
-            </h3>
-            <p className="text-zinc-400 text-sm">Streaming info not available for this title</p>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <Play className="w-5 h-5 text-red-500" />
+                Where to Watch
+              </h3>
+              <button
+                onClick={() => setShowCountrySelector(!showCountrySelector)}
+                className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg text-sm transition-colors"
+              >
+                <Globe className="w-4 h-4" />
+                {currentCountry.flag} {currentCountry.code}
+              </button>
+            </div>
+
+            {showCountrySelector && (
+              <div className="mb-4 bg-zinc-900 rounded-lg p-3 border border-zinc-700">
+                <p className="text-xs text-zinc-400 mb-2">Select your region:</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {countries.map((country) => (
+                    <button
+                      key={country.code}
+                      onClick={() => {
+                        setSelectedCountry(country.code);
+                        setShowCountrySelector(false);
+                        fetchMovieDetails(movie.id);
+                      }}
+                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                        selectedCountry === country.code
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      {country.flag} {country.code}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <p className="text-zinc-400 text-sm">Streaming info not available in {currentCountry.name}</p>
           </div>
         );
       }
 
-      const { flatrate, rent, buy } = streamingProviders;
+      const { flatrate, rent, buy, link } = streamingProviders;
 
       return (
         <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
-          <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Play className="w-5 h-5 text-red-500" />
-            Where to Watch
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+              <Play className="w-5 h-5 text-red-500" />
+              Where to Watch
+            </h3>
+            <button
+              onClick={() => setShowCountrySelector(!showCountrySelector)}
+              className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg text-sm transition-colors"
+            >
+              <Globe className="w-4 h-4" />
+              {currentCountry.flag} {currentCountry.code}
+            </button>
+          </div>
+
+          {showCountrySelector && (
+            <div className="mb-4 bg-zinc-900 rounded-lg p-3 border border-zinc-700">
+              <p className="text-xs text-zinc-400 mb-2">Select your region:</p>
+              <div className="grid grid-cols-3 gap-2">
+                {countries.map((country) => (
+                  <button
+                    key={country.code}
+                    onClick={() => {
+                      setSelectedCountry(country.code);
+                      setShowCountrySelector(false);
+                      fetchMovieDetails(movie.id);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedCountry === country.code
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {country.flag} {country.code}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {flatrate && flatrate.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-medium text-zinc-400 mb-2">Stream</p>
+              <p className="text-sm font-medium text-zinc-400 mb-3">Stream</p>
               <div className="flex flex-wrap gap-3">
                 {flatrate.map((provider) => (
-                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
-                    <img
-                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                      alt={provider.provider_name}
-                      className="w-12 h-12 rounded-lg border border-zinc-600"
-                      title={provider.provider_name}
-                    />
-                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
-                  </div>
+                  <a
+                    key={provider.provider_id}
+                    href={getProviderUrl(provider.provider_name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 group cursor-pointer"
+                    title={`Watch on ${provider.provider_name}`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                        alt={provider.provider_name}
+                        className="w-14 h-14 rounded-lg border border-zinc-600 group-hover:border-purple-500 transition-all group-hover:scale-110"
+                      />
+                      <ExternalLink className="absolute -top-1 -right-1 w-4 h-4 bg-purple-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-xs text-zinc-400 group-hover:text-purple-400 transition-colors text-center max-w-[60px]">
+                      {provider.provider_name}
+                    </span>
+                  </a>
                 ))}
               </div>
             </div>
@@ -459,48 +566,82 @@ const MovieTracker = () => {
 
           {rent && rent.length > 0 && (
             <div className="mb-4">
-              <p className="text-sm font-medium text-zinc-400 mb-2">Rent</p>
+              <p className="text-sm font-medium text-zinc-400 mb-3">Rent</p>
               <div className="flex flex-wrap gap-3">
                 {rent.slice(0, 4).map((provider) => (
-                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
-                    <img
-                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                      alt={provider.provider_name}
-                      className="w-12 h-12 rounded-lg border border-zinc-600"
-                      title={provider.provider_name}
-                    />
-                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
-                  </div>
+                  <a
+                    key={provider.provider_id}
+                    href={getProviderUrl(provider.provider_name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 group cursor-pointer"
+                    title={`Rent on ${provider.provider_name}`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                        alt={provider.provider_name}
+                        className="w-14 h-14 rounded-lg border border-zinc-600 group-hover:border-blue-500 transition-all group-hover:scale-110"
+                      />
+                      <ExternalLink className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-xs text-zinc-400 group-hover:text-blue-400 transition-colors text-center max-w-[60px]">
+                      {provider.provider_name}
+                    </span>
+                  </a>
                 ))}
               </div>
             </div>
           )}
 
           {buy && buy.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-zinc-400 mb-2">Buy</p>
+            <div className="mb-4">
+              <p className="text-sm font-medium text-zinc-400 mb-3">Buy</p>
               <div className="flex flex-wrap gap-3">
                 {buy.slice(0, 4).map((provider) => (
-                  <div key={provider.provider_id} className="flex flex-col items-center gap-1">
-                    <img
-                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                      alt={provider.provider_name}
-                      className="w-12 h-12 rounded-lg border border-zinc-600"
-                      title={provider.provider_name}
-                    />
-                    <span className="text-xs text-zinc-500">{provider.provider_name}</span>
-                  </div>
+                  <a
+                    key={provider.provider_id}
+                    href={getProviderUrl(provider.provider_name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-col items-center gap-1 group cursor-pointer"
+                    title={`Buy on ${provider.provider_name}`}
+                  >
+                    <div className="relative">
+                      <img
+                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                        alt={provider.provider_name}
+                        className="w-14 h-14 rounded-lg border border-zinc-600 group-hover:border-green-500 transition-all group-hover:scale-110"
+                      />
+                      <ExternalLink className="absolute -top-1 -right-1 w-4 h-4 bg-green-600 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                    <span className="text-xs text-zinc-400 group-hover:text-green-400 transition-colors text-center max-w-[60px]">
+                      {provider.provider_name}
+                    </span>
+                  </a>
                 ))}
               </div>
             </div>
           )}
 
           {!flatrate && !rent && !buy && (
-            <p className="text-zinc-400 text-sm">No streaming options available in your region</p>
+            <p className="text-zinc-400 text-sm">No streaming options available in {currentCountry.name}</p>
+          )}
+
+          {link && (
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+            >
+              View all options on JustWatch
+              <ExternalLink className="w-4 h-4" />
+            </a>
           )}
 
           <p className="text-xs text-zinc-600 mt-4">
-            Streaming data provided by JustWatch
+            Streaming data provided by JustWatch • {currentCountry.name}
           </p>
         </div>
       );
