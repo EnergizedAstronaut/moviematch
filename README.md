@@ -105,47 +105,6 @@ Open:
 http://localhost:3000
 ```
 
-````
-### 🛠️ Installation
-
-### 1. Clone the repo
-
-```bash
-git clone https://github.com/EnergizedAstronaut/moviematch.git
-cd moviematch
-````
-
-### 2. Install dependencies
-
-```bash
-npm install
-```
-
-### 3. Add TMDB API Key
-
-Create a `.env.local` file:
-
-```env
-NEXT_PUBLIC_TMDB_API_KEY=YOUR_TMDB_API_KEY
-```
-
-You can get an API key here: [https://www.themoviedb.org/settings/api](https://www.themoviedb.org/settings/api)
-
-### 4. Run the project
-
-```bash
-npm run dev
-```
-
-Open:
-
-```
-http://localhost:3000
-```
-
-
-
-
 
 🌟 Technologies
 Next.js 14
