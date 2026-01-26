@@ -69,11 +69,7 @@ moviematch/
   package.json
 
 ---
-
-# ✅ Fix for the “Installation” section
-
-Replace your current installation section with this:
-
+````
 ````md
 ## 🛠️ Installation
 
