@@ -2,9 +2,9 @@
   "name": "moviematch",
   "private": true,
   "scripts": {
-    "dev": "next dev",             // For development mode
-    "build": "next build",         // For building the app
-    "start": "next start"          // For starting the app in production mode
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.3",
