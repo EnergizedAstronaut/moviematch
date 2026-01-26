@@ -150,12 +150,9 @@ Open:
 http://localhost:3000
 ```
 
-```
 
 
 
-
-```
 
 🌟 Technologies
 Next.js 14
