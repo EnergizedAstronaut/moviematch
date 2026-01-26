@@ -112,9 +112,6 @@ http://localhost:3000
 
 ---
 
-# ✅ Your full README section after fixing
-
-Copy/paste this whole block into your README and it will display correctly:
 
 ```md
 ## 🛠️ Installation
