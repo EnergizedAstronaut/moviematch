@@ -279,7 +279,7 @@ const MovieTracker = () => {
         // Fetch movies from each common genre
         const genrePromises = topCommonGenres.map(genre =>
           fetch(
-            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0`
+            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0&primary_release_date.gte=1995-01-01`
           ).then(r => r.json())
         );
 
@@ -322,7 +322,7 @@ const MovieTracker = () => {
         )[0];
 
         const response = await fetch(
-          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenre}&sort_by=vote_average.desc&vote_count.gte=1000`
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenre}&sort_by=vote_average.desc&vote_count.gte=1000&primary_release_date.gte=1995-01-01`
         );
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
