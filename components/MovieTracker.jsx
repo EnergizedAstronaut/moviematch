@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Film } from "lucide-react";
 
-const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
-const JUSTWATCH_API = "https://apis.justwatch.com/content/titles/en_US/popular";
+const TMDB_API_KEY = "YOUR_TMDB_API_KEY"; // Replace with your TMDB key
 
 const MovieTracker = () => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -12,8 +11,8 @@ const MovieTracker = () => {
   const [person1Movies, setPerson1Movies] = useState([]);
   const [person2Movies, setPerson2Movies] = useState([]);
   const [compatibilityData, setCompatibilityData] = useState({});
+  const [justWatchData, setJustWatchData] = useState({});
   const [loading, setLoading] = useState(false);
-  const [justWatchData, setJustWatchData] = useState({}); // New state
 
   // Fetch movies from TMDB
   const fetchMovies = async (query) => {
@@ -27,6 +26,7 @@ const MovieTracker = () => {
       setMovies(data.results || []);
     } catch (err) {
       console.error("TMDB fetch error:", err);
+      setMovies([]);
     } finally {
       setLoading(false);
     }
@@ -34,53 +34,47 @@ const MovieTracker = () => {
 
   // Calculate compatibility %
   const calculateCompatibility = (movie) => {
-    const p1Genres = person1Movies.map((m) => m.genre_ids).flat();
-    const p2Genres = person2Movies.map((m) => m.genre_ids).flat();
+    const p1Genres = person1Movies.map((m) => m.genre_ids || []).flat();
+    const p2Genres = person2Movies.map((m) => m.genre_ids || []).flat();
     const shared = movie.genre_ids?.filter((g) => p1Genres.includes(g) && p2Genres.includes(g)).length || 0;
     const total = movie.genre_ids?.length || 1;
     return Math.round((shared / total) * 100);
   };
 
-  // Generate recommendation explanation
+  // Recommendation explanation
   const whyRecommended = (movie) => {
-    const p1Genres = person1Movies.map((m) => m.genre_ids).flat();
-    const p2Genres = person2Movies.map((m) => m.genre_ids).flat();
+    const p1Genres = person1Movies.map((m) => m.genre_ids || []).flat();
+    const p2Genres = person2Movies.map((m) => m.genre_ids || []).flat();
     const sharedGenres = movie.genre_ids?.filter((g) => p1Genres.includes(g) && p2Genres.includes(g)) || [];
     if (sharedGenres.length > 0) return `Matches both your tastes in ${sharedGenres.length} genre(s)`;
     return "Matches at least one of your tastes";
   };
 
-  // Fetch JustWatch availability for a single movie
+  // Mock JustWatch availability
   const fetchJustWatchAvailability = async (title, movieId) => {
-    try {
-      const res = await fetch(`${JUSTWATCH_API}?query=${encodeURIComponent(title)}`);
-      const data = await res.json();
-      const offers = data.items?.[0]?.offers?.map((o) => o.provider_id) || [];
-      setJustWatchData((prev) => ({ ...prev, [movieId]: offers.join(", ") || "Not available" }));
-    } catch (err) {
-      console.error("JustWatch fetch error:", err);
-      setJustWatchData((prev) => ({ ...prev, [movieId]: "Unknown" }));
-    }
+    // Mock a delay
+    setTimeout(() => {
+      const providers = ["Netflix", "Hulu", "Prime Video"];
+      const random = providers[Math.floor(Math.random() * providers.length)];
+      setJustWatchData((prev) => ({ ...prev, [movieId]: random }));
+    }, 200);
   };
 
-  // Handle movie selection
+  // Add movie to person
   const addMovieToPerson = (movie, person) => {
     if (person === 1) setPerson1Movies([...person1Movies, movie]);
     else setPerson2Movies([...person2Movies, movie]);
   };
 
-  // Update compatibility whenever lists or movies change
+  // Update compatibility and JustWatch when movies or lists change
   useEffect(() => {
     const compData = {};
     movies.forEach((m) => {
       compData[m.id] = calculateCompatibility(m);
-    });
-    setCompatibilityData(compData);
-
-    // Fetch JustWatch data for all movies
-    movies.forEach((m) => {
+      // Fetch mock JustWatch availability
       if (!justWatchData[m.id]) fetchJustWatchAvailability(m.title, m.id);
     });
+    setCompatibilityData(compData);
   }, [person1Movies, person2Movies, movies]);
 
   return (
@@ -115,7 +109,9 @@ const MovieTracker = () => {
           <div key={movie.id} className="border rounded p-3 shadow hover:shadow-lg transition">
             <h2 className="font-semibold">{movie.title}</h2>
             <p className="text-sm">{whyRecommended(movie)}</p>
-            <p className="text-sm font-bold">Compatibility: {compatibilityData[movie.id] || 0}%</p>
+            <p className="text-sm font-bold">
+              Compatibility: {compatibilityData[movie.id] || 0}%
+            </p>
             <p className="text-sm italic">
               Streaming: {justWatchData[movie.id] || "Checking..."}
             </p>
