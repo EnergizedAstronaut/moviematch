@@ -142,6 +142,17 @@ export default function MovieTracker() {
     setRecommendations(results.slice(0, 12));
     setLoading(false);
   };
+const whyRecommended = (movie) => {
+  const p1Genres = person1Movies.map((m) => m.genre_ids).flat();
+  const p2Genres = person2Movies.map((m) => m.genre_ids).flat();
+
+  const sharedGenres = movie.genre_ids?.filter(
+    (g) => p1Genres.includes(g) && p2Genres.includes(g)
+  ) || [];
+
+  if (sharedGenres.length > 0) return `Matches both your tastes in ${sharedGenres.length} genre(s)`;
+  return "Matches at least one of your tastes";
+};
 
   /* =========================
      MOVIE CARD
