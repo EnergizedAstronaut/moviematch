@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white;
+html, body {
+  background-color: black;
+  color: white;
 }
