@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { Film } from "lucide-react";
 
-const TMDB_API_KEY = "YOUR_TMDB_API_KEY"; // Replace with your TMDB key
+const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb"; // Replace with your TMDB key
 
 const MovieTracker = () => {
   const [searchQuery, setSearchQuery] = useState("");
