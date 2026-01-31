@@ -275,56 +275,44 @@ const MovieTracker = () => {
 
     const commonGenres = Object.keys(p1Genres).filter(g => p2Genres[g]);
 
-    // Classic exceptions - these specific movie IDs are always allowed
-    const classicExceptions = [
-      105, // Back to the Future (1985)
-      329, // Jurassic Park (1993)
-      218, // The Terminator (1984)
-      680, // Pulp Fiction (1994)
-      769  // GoodFellas (1990)
-    ];
-
     try {
       let recommendedMovies = [];
 
       if (togethernessMode && commonGenres.length > 0) {
-        // TOGETHERNESS MODE: Multi-genre approach with year filtering
+        // TOGETHERNESS MODE: Multi-genre approach focusing on American cinema
         const topCommonGenres = commonGenres
           .sort((a, b) => (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a]))
           .slice(0, 3);
 
-        // Fetch from each top genre
+        // Fetch from each top genre - focus on US movies, recent and quality
         const genrePromises = topCommonGenres.map(genre =>
           fetch(
-            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0&primary_release_date.gte=1995-01-01`
+            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&with_origin_country=US&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0`
           ).then(r => r.json())
         );
 
         const genreResults = await Promise.all(genrePromises);
         const allResults = genreResults.flatMap(data => data.results || []);
 
-        // Also fetch the classic exceptions
-        const classicPromises = classicExceptions.map(id =>
-          fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}`)
-            .then(r => r.json())
-            .catch(() => null)
-        );
-        const classics = (await Promise.all(classicPromises)).filter(m => m !== null);
-
-        // Combine and score
-        const scoredMovies = [...allResults, ...classics].map(movie => {
+        // Score movies based on compatibility
+        const scoredMovies = allResults.map(movie => {
           let score = 0;
           
-          const movieGenres = movie.genre_ids || movie.genres?.map(g => g.id) || [];
+          const movieGenres = movie.genre_ids || [];
           const sharedGenreCount = movieGenres.filter(g => 
             commonGenres.includes(g.toString())
           ).length;
-          score += sharedGenreCount * 15; // Increased weight for shared genres
-          
-          score += movie.vote_average * 3; // Increased rating weight
+          score += sharedGenreCount * 15;
+          score += movie.vote_average * 3;
           score += Math.min(movie.popularity / 100, 5);
           
-          // Bonus for being in both people's top genres
+          // Bonus for newer movies (2020+)
+          const releaseYear = parseInt(movie.release_date?.split('-')[0] || '0');
+          if (releaseYear >= 2020) score += 8;
+          else if (releaseYear >= 2015) score += 5;
+          else if (releaseYear >= 2010) score += 3;
+          
+          // Bonus if in both people's top genres
           const isInBothTopGenres = movieGenres.some(g => 
             p1Genres[g] >= 2 && p2Genres[g] >= 2
           );
@@ -342,33 +330,22 @@ const MovieTracker = () => {
           .slice(0, 12);
 
       } else if (commonGenres.length > 0) {
-        // NORMAL MODE: Top 2 shared genres with year filter
+        // NORMAL MODE: Top 2 shared genres, American movies
         const topGenres = commonGenres
           .sort((a, b) => (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a]))
           .slice(0, 2)
           .join(',');
 
         const response = await fetch(
-          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenres}&sort_by=vote_average.desc&vote_count.gte=1000&primary_release_date.gte=1995-01-01`
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenres}&with_origin_country=US&sort_by=vote_average.desc&vote_count.gte=1000`
         );
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
-
-        // Add classics
-        const classicPromises = classicExceptions.map(id =>
-          fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}`)
-            .then(r => r.json())
-            .catch(() => null)
-        );
-        const classics = (await Promise.all(classicPromises)).filter(m => m !== null);
-        
-        // Mix in some classics
-        recommendedMovies = [...classics.slice(0, 2), ...recommendedMovies.slice(0, 10)];
         
       } else {
-        // No common genres - show popular recent movies
+        // No common genres - show popular American movies
         const response = await fetch(
-          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.0&vote_count.gte=1000&primary_release_date.gte=1995-01-01`
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_origin_country=US&sort_by=popularity.desc&vote_average.gte=7.0&vote_count.gte=1000`
         );
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
@@ -1374,9 +1351,10 @@ const MovieTracker = () => {
                 </p>
                 <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
                   <li>Analyzing top 3 shared genres from both lists</li>
+                  <li>Focusing on American cinema and recent releases</li>
                   <li>Only showing highly-rated films (7.0+ rating)</li>
-                  <li>Recommending movies from 1995+ (plus 5 timeless classics)</li>
-                  <li>Smart scoring based on genre overlap and ratings</li>
+                  <li>Smart scoring based on genre overlap and popularity</li>
+                  <li>Bonus points for newer movies (2020+)</li>
                 </ul>
                 {commonMovies.length > 0 && (
                   <div className="mt-4 bg-pink-900/20 rounded-lg p-3 border border-pink-800/30">
@@ -1396,8 +1374,8 @@ const MovieTracker = () => {
               </h2>
               <p className="text-zinc-400 mb-6">
                 {togethernessMode 
-                  ? "Smart picks based on your shared genre preferences (movies from 1995+ plus iconic classics)"
-                  : "Based on your shared interests and favorite genres (1995+ with classic exceptions)"
+                  ? "Smart picks based on your shared genre preferences with focus on American cinema"
+                  : "Based on your shared interests and favorite genres"
                 }
               </p>
               <button
