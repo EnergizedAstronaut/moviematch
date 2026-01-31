@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
-  Search, Film, Plus, X, Play, Star, Users, Heart, Sparkles, TrendingUp, ExternalLink, Globe
+  Search, Film, Plus, X, Play, Star, Users, Heart, Sparkles, TrendingUp, ExternalLink, Globe, BarChart3, Zap
 } from "lucide-react";
 
 const MovieTracker = () => {
@@ -27,6 +27,9 @@ const MovieTracker = () => {
   const [streamingProviders, setStreamingProviders] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState("US");
   const [showCountrySelector, setShowCountrySelector] = useState(false);
+  const [compatibilityScore, setCompatibilityScore] = useState(null);
+  const [sharedGenres, setSharedGenres] = useState([]);
+  const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
 
   const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
   const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -44,7 +47,6 @@ const MovieTracker = () => {
     { code: "BR", name: "Brazil", flag: "🇧🇷" },
     { code: "IN", name: "India", flag: "🇮🇳" },
     { code: "JP", name: "Japan", flag: "🇯🇵" },
-    { code: "BD", name: "Bangladesh", flag: "🇧🇩" },
   ];
 
   useEffect(() => {
@@ -77,16 +79,21 @@ const MovieTracker = () => {
       if (result && result.keys) {
         const lists = [];
         for (const key of result.keys) {
-          const listData = await window.storage.get(key);
-          if (listData && listData.value) {
-            const parsed = JSON.parse(listData.value);
-            lists.push({ key, ...parsed });
+          try {
+            const listData = await window.storage.get(key);
+            if (listData && listData.value) {
+              const parsed = JSON.parse(listData.value);
+              lists.push({ key, ...parsed });
+            }
+          } catch (err) {
+            console.error(`Error loading list ${key}:`, err);
           }
         }
         setSavedLists(lists);
       }
     } catch (error) {
-      console.log("No saved lists yet");
+      console.log("No saved lists yet or storage not available");
+      setSavedLists([]);
     }
   };
 
@@ -116,10 +123,10 @@ const MovieTracker = () => {
         setListName("");
       }, 1500);
       
-      loadSavedLists();
+      await loadSavedLists();
     } catch (error) {
-      setSaveMessage("❌ Error saving list");
-      console.error(error);
+      setSaveMessage("❌ Error saving list. Storage may not be available.");
+      console.error("Save error:", error);
     }
   };
 
@@ -143,6 +150,7 @@ const MovieTracker = () => {
       }
     } catch (error) {
       console.error("Error loading list:", error);
+      alert("Failed to load list. It may be corrupted.");
     }
   };
 
@@ -151,9 +159,10 @@ const MovieTracker = () => {
     
     try {
       await window.storage.delete(key);
-      loadSavedLists();
+      await loadSavedLists();
     } catch (error) {
       console.error("Error deleting list:", error);
+      alert("Failed to delete list.");
     }
   };
 
@@ -266,47 +275,64 @@ const MovieTracker = () => {
 
     const commonGenres = Object.keys(p1Genres).filter(g => p2Genres[g]);
 
+    // Classic exceptions - these specific movie IDs are always allowed
+    const classicExceptions = [
+      105, // Back to the Future (1985)
+      329, // Jurassic Park (1993)
+      218, // The Terminator (1984)
+      680, // Pulp Fiction (1994)
+      769  // GoodFellas (1990)
+    ];
+
     try {
       let recommendedMovies = [];
 
       if (togethernessMode && commonGenres.length > 0) {
-        // TOGETHERNESS MODE: Focus on shared preferences
-        // Get top 3 common genres weighted by both people's preferences
+        // TOGETHERNESS MODE: Multi-genre approach with year filtering
         const topCommonGenres = commonGenres
           .sort((a, b) => (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a]))
           .slice(0, 3);
 
-        // Fetch movies from each common genre
+        // Fetch from each top genre
         const genrePromises = topCommonGenres.map(genre =>
           fetch(
-            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0`
+            `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genre}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=7.0&primary_release_date.gte=1995-01-01`
           ).then(r => r.json())
         );
 
         const genreResults = await Promise.all(genrePromises);
         const allResults = genreResults.flatMap(data => data.results || []);
 
-        // Score movies based on how well they match BOTH people's tastes
-        const scoredMovies = allResults.map(movie => {
+        // Also fetch the classic exceptions
+        const classicPromises = classicExceptions.map(id =>
+          fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}`)
+            .then(r => r.json())
+            .catch(() => null)
+        );
+        const classics = (await Promise.all(classicPromises)).filter(m => m !== null);
+
+        // Combine and score
+        const scoredMovies = [...allResults, ...classics].map(movie => {
           let score = 0;
           
-          // Bonus for genres both people like
-          const movieGenres = movie.genre_ids || [];
+          const movieGenres = movie.genre_ids || movie.genres?.map(g => g.id) || [];
           const sharedGenreCount = movieGenres.filter(g => 
             commonGenres.includes(g.toString())
           ).length;
-          score += sharedGenreCount * 10;
+          score += sharedGenreCount * 15; // Increased weight for shared genres
           
-          // Bonus for high ratings
-          score += movie.vote_average * 2;
-          
-          // Bonus for popularity (but not too much)
+          score += movie.vote_average * 3; // Increased rating weight
           score += Math.min(movie.popularity / 100, 5);
+          
+          // Bonus for being in both people's top genres
+          const isInBothTopGenres = movieGenres.some(g => 
+            p1Genres[g] >= 2 && p2Genres[g] >= 2
+          );
+          if (isInBothTopGenres) score += 10;
           
           return { ...movie, matchScore: score };
         });
 
-        // Remove duplicates and sort by match score
         const uniqueMovies = Array.from(
           new Map(scoredMovies.map(m => [m.id, m])).values()
         );
@@ -316,20 +342,33 @@ const MovieTracker = () => {
           .slice(0, 12);
 
       } else if (commonGenres.length > 0) {
-        // NORMAL MODE: Just use top shared genre
-        const topGenre = commonGenres.sort((a, b) =>
-          (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a])
-        )[0];
+        // NORMAL MODE: Top 2 shared genres with year filter
+        const topGenres = commonGenres
+          .sort((a, b) => (p1Genres[b] + p2Genres[b]) - (p1Genres[a] + p2Genres[a]))
+          .slice(0, 2)
+          .join(',');
 
         const response = await fetch(
-          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenre}&sort_by=vote_average.desc&vote_count.gte=1000`
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenres}&sort_by=vote_average.desc&vote_count.gte=1000&primary_release_date.gte=1995-01-01`
         );
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
+
+        // Add classics
+        const classicPromises = classicExceptions.map(id =>
+          fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${TMDB_API_KEY}`)
+            .then(r => r.json())
+            .catch(() => null)
+        );
+        const classics = (await Promise.all(classicPromises)).filter(m => m !== null);
+        
+        // Mix in some classics
+        recommendedMovies = [...classics.slice(0, 2), ...recommendedMovies.slice(0, 10)];
+        
       } else {
-        // No common genres - show popular movies
+        // No common genres - show popular recent movies
         const response = await fetch(
-          `${TMDB_BASE_URL}/movie/popular?api_key=${TMDB_API_KEY}`
+          `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&vote_average.gte=7.0&vote_count.gte=1000&primary_release_date.gte=1995-01-01`
         );
         const data = await response.json();
         recommendedMovies = data.results?.slice(0, 12) || [];
@@ -341,6 +380,7 @@ const MovieTracker = () => {
       setRecommendations(filtered);
     } catch (error) {
       console.error("Error generating recommendations:", error);
+      setRecommendations([]);
     }
 
     setLoading(false);
@@ -350,6 +390,106 @@ const MovieTracker = () => {
     const p1Ids = new Set(person1Movies.map(m => m.id));
     return person2Movies.filter(m => p1Ids.has(m.id));
   };
+
+  const calculateCompatibility = () => {
+    if (person1Movies.length === 0 || person2Movies.length === 0) {
+      return null;
+    }
+
+    const p1Genres = {};
+    const p2Genres = {};
+    const genreNames = {
+      28: "Action", 12: "Adventure", 16: "Animation", 35: "Comedy", 80: "Crime",
+      99: "Documentary", 18: "Drama", 10751: "Family", 14: "Fantasy", 36: "History",
+      27: "Horror", 10402: "Music", 9648: "Mystery", 10749: "Romance", 878: "Science Fiction",
+      10770: "TV Movie", 53: "Thriller", 10752: "War", 37: "Western"
+    };
+
+    // Count genres for each person
+    person1Movies.forEach(movie => {
+      movie.genre_ids?.forEach(id => {
+        p1Genres[id] = (p1Genres[id] || 0) + 1;
+      });
+    });
+
+    person2Movies.forEach(movie => {
+      movie.genre_ids?.forEach(id => {
+        p2Genres[id] = (p2Genres[id] || 0) + 1;
+      });
+    });
+
+    // Find common genres
+    const allGenreIds = new Set([...Object.keys(p1Genres), ...Object.keys(p2Genres)]);
+    const commonGenreIds = Array.from(allGenreIds).filter(g => p1Genres[g] && p2Genres[g]);
+    
+    // Calculate compatibility score (0-100)
+    const totalGenres = allGenreIds.size;
+    const commonCount = commonGenreIds.length;
+    const baseScore = totalGenres > 0 ? (commonCount / totalGenres) * 100 : 0;
+
+    // Bonus for having movies in common
+    const commonMoviesCount = findCommonMovies().length;
+    const movieBonus = Math.min(commonMoviesCount * 5, 20);
+
+    // Bonus for similar average ratings preference
+    const p1AvgRating = person1Movies.reduce((sum, m) => sum + (m.vote_average || 0), 0) / person1Movies.length;
+    const p2AvgRating = person2Movies.reduce((sum, m) => sum + (m.vote_average || 0), 0) / person2Movies.length;
+    const ratingDiff = Math.abs(p1AvgRating - p2AvgRating);
+    const ratingBonus = Math.max(10 - ratingDiff * 2, 0);
+
+    const finalScore = Math.min(Math.round(baseScore + movieBonus + ratingBonus), 100);
+
+    // Build shared genres list with strength
+    const shared = commonGenreIds.map(id => ({
+      id,
+      name: genreNames[id] || "Unknown",
+      person1Count: p1Genres[id],
+      person2Count: p2Genres[id],
+      totalCount: p1Genres[id] + p2Genres[id]
+    })).sort((a, b) => b.totalCount - a.totalCount);
+
+    setCompatibilityScore(finalScore);
+    setSharedGenres(shared);
+
+    return {
+      score: finalScore,
+      sharedGenres: shared,
+      commonMovies: commonMoviesCount,
+      insights: generateInsights(finalScore, shared, commonMoviesCount)
+    };
+  };
+
+  const generateInsights = (score, genres, commonCount) => {
+    const insights = [];
+
+    if (score >= 80) {
+      insights.push("🎉 Excellent match! You have very similar movie tastes.");
+    } else if (score >= 60) {
+      insights.push("✨ Great compatibility! You share many favorite genres.");
+    } else if (score >= 40) {
+      insights.push("🎬 Moderate match. You have some overlap in preferences.");
+    } else {
+      insights.push("🌟 Diverse tastes! This means more variety in your movie nights.");
+    }
+
+    if (commonCount > 0) {
+      insights.push(`You've both added ${commonCount} of the same movies!`);
+    }
+
+    if (genres.length > 0) {
+      const topGenre = genres[0];
+      insights.push(`You both love ${topGenre.name} movies!`);
+    }
+
+    return insights;
+  };
+
+  // Calculate compatibility when movies change
+  useEffect(() => {
+    if (togethernessMode && (person1Movies.length > 0 || person2Movies.length > 0)) {
+      calculateCompatibility();
+    }
+  }, [person1Movies, person2Movies, togethernessMode]);
 
   const commonMovies = findCommonMovies();
 
@@ -837,6 +977,121 @@ const MovieTracker = () => {
     </div>
   );
 
+  const CompatibilityModal = () => {
+    const compatibility = calculateCompatibility();
+    if (!compatibility) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+              <BarChart3 className="w-8 h-8 text-purple-400" />
+              Compatibility Analysis
+            </h2>
+            <button
+              onClick={() => setShowCompatibilityModal(false)}
+              className="bg-zinc-800 hover:bg-zinc-700 rounded-full p-2 transition-colors"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Compatibility Score */}
+          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 rounded-xl p-8 mb-6 text-center border border-purple-800/30">
+            <p className="text-zinc-400 text-sm mb-2">Your Compatibility Score</p>
+            <div className="text-7xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+              {compatibility.score}%
+            </div>
+            <div className="w-full bg-zinc-800 rounded-full h-4 mb-4">
+              <div
+                className="bg-gradient-to-r from-purple-600 to-pink-600 h-4 rounded-full transition-all duration-1000"
+                style={{ width: `${compatibility.score}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2 text-zinc-300">
+              {compatibility.score >= 80 ? (
+                <>🔥 <span>Perfect Match!</span></>
+              ) : compatibility.score >= 60 ? (
+                <>✨ <span>Great Compatibility</span></>
+              ) : compatibility.score >= 40 ? (
+                <>🎬 <span>Good Match</span></>
+              ) : (
+                <>🌈 <span>Diverse Tastes</span></>
+              )}
+            </div>
+          </div>
+
+          {/* Insights */}
+          <div className="mb-6">
+            <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-yellow-400" />
+              Key Insights
+            </h3>
+            <div className="space-y-2">
+              {compatibility.insights.map((insight, idx) => (
+                <div key={idx} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                  <p className="text-zinc-300">{insight}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Shared Genres */}
+          {compatibility.sharedGenres.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <Heart className="w-5 h-5 text-pink-400" />
+                Shared Genres
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                {compatibility.sharedGenres.map((genre) => (
+                  <div
+                    key={genre.id}
+                    className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-semibold text-white">{genre.name}</h4>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <span className="text-xs text-zinc-400">{genre.person1Count}</span>
+                        <span className="text-zinc-600 mx-1">|</span>
+                        <span className="text-xs text-zinc-400">{genre.person2Count}</span>
+                        <div className="w-2 h-2 rounded-full bg-purple-500" />
+                      </div>
+                    </div>
+                    <div className="w-full bg-zinc-700 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-600 to-purple-600 h-2 rounded-full"
+                        style={{ width: `${Math.min((genre.totalCount / Math.max(person1Movies.length, person2Movies.length)) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-800/30 text-center">
+              <div className="text-3xl font-bold text-blue-400 mb-1">{person1Movies.length}</div>
+              <div className="text-xs text-zinc-400">{person1Name}'s Movies</div>
+            </div>
+            <div className="bg-pink-900/20 rounded-lg p-4 border border-pink-800/30 text-center">
+              <div className="text-3xl font-bold text-pink-400 mb-1">{compatibility.commonMovies}</div>
+              <div className="text-xs text-zinc-400">Shared Movies</div>
+            </div>
+            <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-800/30 text-center">
+              <div className="text-3xl font-bold text-purple-400 mb-1">{person2Movies.length}</div>
+              <div className="text-xs text-zinc-400">{person2Name}'s Movies</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -868,6 +1123,18 @@ const MovieTracker = () => {
                 Load Lists
               </button>
               <button
+                onClick={() => {
+                  const compat = calculateCompatibility();
+                  if (compat) setShowCompatibilityModal(true);
+                }}
+                disabled={person1Movies.length === 0 || person2Movies.length === 0}
+                className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={person1Movies.length === 0 || person2Movies.length === 0 ? "Add movies to both lists first" : "View compatibility analysis"}
+              >
+                <BarChart3 className="w-5 h-5" />
+                {compatibilityScore !== null ? `${compatibilityScore}%` : "Stats"}
+              </button>
+              <button
                 onClick={() => setTogethernessMode(!togethernessMode)}
                 className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
                   togethernessMode
@@ -876,7 +1143,12 @@ const MovieTracker = () => {
                 }`}
               >
                 <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
-                Togetherness Mode
+                Togetherness
+                {compatibilityScore !== null && togethernessMode && (
+                  <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                    {compatibilityScore}%
+                  </span>
+                )}
               </button>
             </div>
           </div>
@@ -1101,11 +1373,19 @@ const MovieTracker = () => {
                   Finding movies that match <strong>both</strong> of your tastes:
                 </p>
                 <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
-                  <li>Prioritizing genres you both enjoy</li>
-                  <li>Only showing highly-rated films (7.0+)</li>
-                  <li>Scoring based on shared preferences</li>
-                  <li>Filtering for movies you'll both love</li>
+                  <li>Analyzing top 3 shared genres from both lists</li>
+                  <li>Only showing highly-rated films (7.0+ rating)</li>
+                  <li>Recommending movies from 1995+ (plus 5 timeless classics)</li>
+                  <li>Smart scoring based on genre overlap and ratings</li>
                 </ul>
+                {commonMovies.length > 0 && (
+                  <div className="mt-4 bg-pink-900/20 rounded-lg p-3 border border-pink-800/30">
+                    <p className="text-pink-300 text-sm flex items-center gap-2">
+                      <Heart className="w-4 h-4 fill-current" />
+                      You have {commonMovies.length} movies in common! That's a great sign.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1116,8 +1396,8 @@ const MovieTracker = () => {
               </h2>
               <p className="text-zinc-400 mb-6">
                 {togethernessMode 
-                  ? "These picks are optimized for maximum compatibility"
-                  : "Based on your shared interests and favorite genres"
+                  ? "Smart picks based on your shared genre preferences (movies from 1995+ plus iconic classics)"
+                  : "Based on your shared interests and favorite genres (1995+ with classic exceptions)"
                 }
               </p>
               <button
@@ -1125,7 +1405,7 @@ const MovieTracker = () => {
                 disabled={loading}
                 className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 disabled:from-zinc-700 disabled:to-zinc-800 text-white font-semibold px-6 py-3 rounded-xl transition-all"
               >
-                Refresh Recommendations
+                {loading ? 'Finding perfect matches...' : 'Refresh Recommendations'}
               </button>
             </div>
 
@@ -1143,8 +1423,11 @@ const MovieTracker = () => {
             ) : !loading && (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                 <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-500 text-lg">
+                <p className="text-zinc-500 text-lg mb-2">
                   Add movies to both lists to get personalized recommendations
+                </p>
+                <p className="text-zinc-600 text-sm">
+                  The more movies you add, the better the recommendations!
                 </p>
               </div>
             )}
@@ -1160,6 +1443,7 @@ const MovieTracker = () => {
 
         {showSaveModal && <SaveModal />}
         {showLoadModal && <LoadModal />}
+        {showCompatibilityModal && <CompatibilityModal />}
       </div>
     </div>
   );
