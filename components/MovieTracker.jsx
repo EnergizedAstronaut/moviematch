@@ -55,6 +55,75 @@ export default function MovieTracker() {
 
   const save = (k, v) =>
     localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
+const LISTS_KEY = "moviematch_saved_lists";
+
+/* ---------- LOAD ALL LISTS ---------- */
+const loadSavedLists = () => {
+  try {
+    const raw = localStorage.getItem(LISTS_KEY);
+    setSavedLists(raw ? JSON.parse(raw) : []);
+  } catch {
+    setSavedLists([]);
+  }
+};
+
+/* ---------- SAVE CURRENT LIST ---------- */
+const saveCurrentList = () => {
+  if (!listName.trim()) {
+    setSaveMessage("Please enter a list name");
+    return;
+  }
+
+  const newList = {
+    id: Date.now(),
+    name: listName,
+    person1Name,
+    person2Name,
+    person1Movies,
+    person2Movies,
+    savedAt: new Date().toISOString()
+  };
+
+  const updated = [...savedLists, newList];
+  localStorage.setItem(LISTS_KEY, JSON.stringify(updated));
+
+  setSavedLists(updated);
+  setSaveMessage("✅ List saved!");
+
+  setTimeout(() => {
+    setShowSaveModal(false);
+    setListName("");
+    setSaveMessage("");
+  }, 1200);
+};
+
+/* ---------- LOAD ONE LIST ---------- */
+const loadList = (id) => {
+  const list = savedLists.find(l => l.id === id);
+  if (!list) return;
+
+  setPerson1Name(list.person1Name);
+  setPerson2Name(list.person2Name);
+  setPerson1Movies(list.person1Movies);
+  setPerson2Movies(list.person2Movies);
+
+  saveToStorage("person1_name", list.person1Name);
+  saveToStorage("person2_name", list.person2Name);
+  saveToStorage("person1_movies", list.person1Movies);
+  saveToStorage("person2_movies", list.person2Movies);
+
+  setShowLoadModal(false);
+  setActiveTab("compare");
+};
+
+/* ---------- DELETE LIST ---------- */
+const deleteList = (id) => {
+  if (!confirm("Delete this saved list?")) return;
+
+  const updated = savedLists.filter(l => l.id !== id);
+  localStorage.setItem(LISTS_KEY, JSON.stringify(updated));
+  setSavedLists(updated);
+};
 
   /* =========================
      FETCHING
