@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 
 // TMDB API & JustWatch API placeholders
-const TMDB_API_KEY = "YOUR_TMDB_API_KEY";
+const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const JUSTWATCH_API = "https://apis.justwatch.com/content/titles/en_US/popular"; // example endpoint
 
 const MovieTracker = () => {
