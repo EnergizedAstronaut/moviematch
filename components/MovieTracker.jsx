@@ -16,7 +16,7 @@ import {
 /* =========================
    CONFIG
 ========================= */
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const TMDB_API_KEY =  "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 /* =========================
