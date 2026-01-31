@@ -3,15 +3,9 @@
 import React, { useEffect, useState } from "react";
 import { Search, Users, Heart, Sparkles } from "lucide-react";
 
-/* =========================
-   CONFIG
-========================= */
 const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-/* =========================
-   COMPONENT
-========================= */
 export default function MovieTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
@@ -83,48 +77,68 @@ export default function MovieTracker() {
   };
 
   const removeMovie = (id, who) => {
-    if (who === 1) {
-      const u = person1Movies.filter((m) => m.id !== id);
-      setPerson1Movies(u);
-      save("p1", u);
-    } else {
-      const u = person2Movies.filter((m) => m.id !== id);
-      setPerson2Movies(u);
-      save("p2", u);
-    }
+    const fn = who === 1 ? setPerson1Movies : setPerson2Movies;
+    const src = who === 1 ? person1Movies : person2Movies;
+    const key = who === 1 ? "p1" : "p2";
+    const u = src.filter((m) => m.id !== id);
+    fn(u);
+    save(key, u);
   };
 
   /* =========================
-     RECOMMENDATIONS
+     RECOMMENDATIONS (FIXED)
   ========================= */
   const generateRecommendations = async () => {
     setLoading(true);
 
-    const genreWeight = {};
-    [...person1Movies, ...person2Movies].forEach((m) =>
-      m.genre_ids?.forEach((g) => (genreWeight[g] = (genreWeight[g] || 0) + 1))
+    const p1Genres = {};
+    const p2Genres = {};
+
+    person1Movies.forEach((m) =>
+      m.genre_ids?.forEach((g) => (p1Genres[g] = (p1Genres[g] || 0) + 1))
+    );
+    person2Movies.forEach((m) =>
+      m.genre_ids?.forEach((g) => (p2Genres[g] = (p2Genres[g] || 0) + 1))
     );
 
-    const topGenres = Object.keys(genreWeight).slice(0, 3).join("|");
+    const sharedGenres = Object.keys(p1Genres).filter((g) => p2Genres[g]);
+
+    const genreQuery = togethernessMode
+      ? sharedGenres.slice(0, 3).join("|")
+      : [...new Set([...Object.keys(p1Genres), ...Object.keys(p2Genres)])]
+          .slice(0, 3)
+          .join("|");
+
+    if (!genreQuery) {
+      setRecommendations([]);
+      setLoading(false);
+      return;
+    }
 
     const r = await fetch(
-      `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenres}&vote_count.gte=300`
+      `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreQuery}&vote_count.gte=300`
     );
     const d = await r.json();
 
-    let results = d.results || [];
+    const existingIds = new Set([
+      ...person1Movies.map((m) => m.id),
+      ...person2Movies.map((m) => m.id),
+    ]);
 
-    if (togethernessMode) {
-      results = results
-        .map((m) => ({
-          ...m,
-          _score:
-            (m.vote_average || 0) * 3 +
-            (m.genre_ids?.filter((g) => genreWeight[g]).length || 0) * 10,
-        }))
-        .sort((a, b) => b._score - a._score);
-    }
+    let results = (d.results || [])
+      .filter((m) => !existingIds.has(m.id))
+      .map((m) => {
+        let score = m.vote_average * 2;
 
+        if (togethernessMode) {
+          const shared = m.genre_ids?.filter((g) => sharedGenres.includes(String(g))).length || 0;
+          score += shared * 15;
+        }
+
+        return { ...m, _score: score };
+      });
+
+    results.sort((a, b) => b._score - a._score);
     setRecommendations(results.slice(0, 12));
     setLoading(false);
   };
@@ -133,7 +147,7 @@ export default function MovieTracker() {
      MOVIE CARD
   ========================= */
   const MovieCard = ({ movie, actions, remove }) => (
-    <div className="bg-zinc-900 rounded-xl overflow-hidden border border-zinc-800">
+    <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
       <img
         src={
           movie.poster_path
@@ -150,26 +164,17 @@ export default function MovieTracker() {
 
         {actions && (
           <div className="flex gap-2 mt-2">
-            <button
-              onClick={() => addMovie(movie, 1)}
-              className="flex-1 bg-blue-600 text-xs py-1 rounded"
-            >
+            <button onClick={() => addMovie(movie, 1)} className="flex-1 bg-blue-600 text-xs py-1 rounded">
               {person1Name}
             </button>
-            <button
-              onClick={() => addMovie(movie, 2)}
-              className="flex-1 bg-purple-600 text-xs py-1 rounded"
-            >
+            <button onClick={() => addMovie(movie, 2)} className="flex-1 bg-purple-600 text-xs py-1 rounded">
               {person2Name}
             </button>
           </div>
         )}
 
         {remove && (
-          <button
-            onClick={remove}
-            className="mt-2 w-full bg-red-600/20 text-red-400 text-xs py-1 rounded"
-          >
+          <button onClick={remove} className="mt-2 w-full bg-red-600/20 text-red-400 text-xs py-1 rounded">
             Remove
           </button>
         )}
@@ -182,8 +187,7 @@ export default function MovieTracker() {
   ========================= */
   return (
     <div className="min-h-screen bg-black text-white px-8 py-6">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex justify-between mb-6">
         <h1 className="text-4xl font-bold">🎬 MovieMatch</h1>
         <button
           onClick={() => setTogethernessMode(!togethernessMode)}
@@ -197,7 +201,6 @@ export default function MovieTracker() {
         </button>
       </div>
 
-      {/* SEARCH */}
       <div className="relative mb-6">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500" />
         <input
@@ -211,13 +214,12 @@ export default function MovieTracker() {
         />
       </div>
 
-      {/* TABS */}
       <div className="flex gap-4 mb-6 border-b border-zinc-800">
         {[
-          ["search", "Discover", <Search />],
-          ["compare", "Your Lists", <Users />],
-          ["recommend", "For You", <Heart />],
-        ].map(([k, l, i]) => (
+          ["search", "Discover"],
+          ["compare", "Your Lists"],
+          ["recommend", "For You"],
+        ].map(([k, l]) => (
           <button
             key={k}
             onClick={() => {
@@ -225,12 +227,10 @@ export default function MovieTracker() {
               if (k === "recommend") generateRecommendations();
             }}
             className={`px-4 py-3 ${
-              activeTab === k
-                ? "border-b-2 border-red-500"
-                : "text-zinc-500"
+              activeTab === k ? "border-b-2 border-red-500" : "text-zinc-500"
             }`}
           >
-            {i} {l}
+            {l}
           </button>
         ))}
       </div>
@@ -247,31 +247,16 @@ export default function MovieTracker() {
 
       {activeTab === "compare" && (
         <div className="grid md:grid-cols-2 gap-8">
-          <div>
-            <h2 className="text-xl mb-3">{person1Name}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {person1Movies.map((m) => (
-                <MovieCard
-                  key={m.id}
-                  movie={m}
-                  remove={() => removeMovie(m.id, 1)}
-                />
-              ))}
+          {[person1Movies, person2Movies].map((list, i) => (
+            <div key={i}>
+              <h2 className="text-xl mb-3">{i === 0 ? person1Name : person2Name}</h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {list.map((m) => (
+                  <MovieCard key={m.id} movie={m} remove={() => removeMovie(m.id, i + 1)} />
+                ))}
+              </div>
             </div>
-          </div>
-
-          <div>
-            <h2 className="text-xl mb-3">{person2Name}</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {person2Movies.map((m) => (
-                <MovieCard
-                  key={m.id}
-                  movie={m}
-                  remove={() => removeMovie(m.id, 2)}
-                />
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       )}
 
