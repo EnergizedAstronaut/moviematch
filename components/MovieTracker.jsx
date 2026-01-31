@@ -1,22 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import {
-  Search,
-  Film,
-  Plus,
-  X,
-  Star,
-  Users,
-  Heart,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { Search, Users, Heart, Sparkles } from "lucide-react";
 
 /* =========================
    CONFIG
 ========================= */
-const TMDB_API_KEY =  "5792c693eccc10a144cad3c08930ecdb";
+const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 /* =========================
@@ -26,7 +16,6 @@ export default function MovieTracker() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [trending, setTrending] = useState([]);
-  const [selectedMovie, setSelectedMovie] = useState(null);
 
   const [person1Name, setPerson1Name] = useState("Person 1");
   const [person2Name, setPerson2Name] = useState("Person 2");
@@ -42,88 +31,15 @@ export default function MovieTracker() {
      INIT
   ========================= */
   useEffect(() => {
-    loadStorage();
-    fetchTrending();
-  }, []);
-
-  const loadStorage = () => {
     setPerson1Movies(JSON.parse(localStorage.getItem("p1") || "[]"));
     setPerson2Movies(JSON.parse(localStorage.getItem("p2") || "[]"));
     setPerson1Name(localStorage.getItem("p1name") || "Person 1");
     setPerson2Name(localStorage.getItem("p2name") || "Person 2");
-  };
+    fetchTrending();
+  }, []);
 
   const save = (k, v) =>
     localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v));
-const LISTS_KEY = "moviematch_saved_lists";
-
-/* ---------- LOAD ALL LISTS ---------- */
-const loadSavedLists = () => {
-  try {
-    const raw = localStorage.getItem(LISTS_KEY);
-    setSavedLists(raw ? JSON.parse(raw) : []);
-  } catch {
-    setSavedLists([]);
-  }
-};
-
-/* ---------- SAVE CURRENT LIST ---------- */
-const saveCurrentList = () => {
-  if (!listName.trim()) {
-    setSaveMessage("Please enter a list name");
-    return;
-  }
-
-  const newList = {
-    id: Date.now(),
-    name: listName,
-    person1Name,
-    person2Name,
-    person1Movies,
-    person2Movies,
-    savedAt: new Date().toISOString()
-  };
-
-  const updated = [...savedLists, newList];
-  localStorage.setItem(LISTS_KEY, JSON.stringify(updated));
-
-  setSavedLists(updated);
-  setSaveMessage("✅ List saved!");
-
-  setTimeout(() => {
-    setShowSaveModal(false);
-    setListName("");
-    setSaveMessage("");
-  }, 1200);
-};
-
-/* ---------- LOAD ONE LIST ---------- */
-const loadList = (id) => {
-  const list = savedLists.find(l => l.id === id);
-  if (!list) return;
-
-  setPerson1Name(list.person1Name);
-  setPerson2Name(list.person2Name);
-  setPerson1Movies(list.person1Movies);
-  setPerson2Movies(list.person2Movies);
-
-  saveToStorage("person1_name", list.person1Name);
-  saveToStorage("person2_name", list.person2Name);
-  saveToStorage("person1_movies", list.person1Movies);
-  saveToStorage("person2_movies", list.person2Movies);
-
-  setShowLoadModal(false);
-  setActiveTab("compare");
-};
-
-/* ---------- DELETE LIST ---------- */
-const deleteList = (id) => {
-  if (!confirm("Delete this saved list?")) return;
-
-  const updated = savedLists.filter(l => l.id !== id);
-  localStorage.setItem(LISTS_KEY, JSON.stringify(updated));
-  setSavedLists(updated);
-};
 
   /* =========================
      FETCHING
@@ -178,22 +94,18 @@ const deleteList = (id) => {
     }
   };
 
-  const commonMovies = person1Movies.filter((m) =>
-    person2Movies.some((x) => x.id === m.id)
-  );
-
   /* =========================
      RECOMMENDATIONS
   ========================= */
   const generateRecommendations = async () => {
     setLoading(true);
 
-    const genres = {};
+    const genreWeight = {};
     [...person1Movies, ...person2Movies].forEach((m) =>
-      m.genre_ids?.forEach((g) => (genres[g] = (genres[g] || 0) + 1))
+      m.genre_ids?.forEach((g) => (genreWeight[g] = (genreWeight[g] || 0) + 1))
     );
 
-    const topGenres = Object.keys(genres).slice(0, 3).join("|");
+    const topGenres = Object.keys(genreWeight).slice(0, 3).join("|");
 
     const r = await fetch(
       `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${topGenres}&vote_count.gte=300`
@@ -208,7 +120,7 @@ const deleteList = (id) => {
           ...m,
           _score:
             (m.vote_average || 0) * 3 +
-            (m.genre_ids?.filter((g) => genres[g]).length || 0) * 10,
+            (m.genre_ids?.filter((g) => genreWeight[g]).length || 0) * 10,
         }))
         .sort((a, b) => b._score - a._score);
     }
@@ -323,7 +235,6 @@ const deleteList = (id) => {
         ))}
       </div>
 
-      {/* CONTENT */}
       {loading && <p className="text-center py-20">Loading…</p>}
 
       {activeTab === "search" && (
