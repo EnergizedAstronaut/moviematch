@@ -49,6 +49,41 @@ const MovieTracker = () => {
     { code: "IN", name: "India", flag: "🇮🇳" },
     { code: "JP", name: "Japan", flag: "🇯🇵" },
   ];
+const loadSavedLists = async () => {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (!window.storage || !window.storage.list) {
+      setSavedLists([]);
+      return;
+    }
+
+    const result = await window.storage.list("movielist:");
+    if (!result || !result.keys) {
+      setSavedLists([]);
+      return;
+    }
+
+    const lists = [];
+
+    for (const key of result.keys) {
+      try {
+        const stored = await window.storage.get(key);
+        if (stored?.value) {
+          const parsed = JSON.parse(stored.value);
+          lists.push({ key, ...parsed });
+        }
+      } catch (err) {
+        console.error(`Failed to load list ${key}`, err);
+      }
+    }
+
+    setSavedLists(lists);
+  } catch (err) {
+    console.warn("Saved lists not available:", err);
+    setSavedLists([]);
+  }
+};
 
   useEffect(() => {
     if (typeof window === "undefined") return;
