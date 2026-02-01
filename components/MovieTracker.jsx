@@ -1241,28 +1241,28 @@ const SaveModal = ({
       )}
 
       {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-      {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
-      {showSaveModal && (
-        <SaveModal
-          listName={listName}
-          setListName={setListName}
-          saveMessage={saveMessage}
-          setShowSaveModal={setShowSaveModal}
-          setSaveMessage={setSaveMessage}
-          onSave={handleSave}
-        />
-      )}
-      {showLoadModal && (
-        <LoadModal
-          savedLists={savedLists}
-          loadList={loadList}
-          deleteList={deleteList}
-          setShowLoadModal={setShowLoadModal}
-        />
-      )}
-      {showCompatibilityModal && <CompatibilityModal />}
-    </div>
-  </div>
-  );
-}
+{selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+{showSaveModal && (
+  <SaveModal
+    listName={listName}
+    setListName={setListName}
+    saveMessage={saveMessage}
+    setShowSaveModal={setShowSaveModal}
+    setSaveMessage={setSaveMessage}
+    onSave={handleSave}
+  />
+)}
+{showLoadModal && (
+  <LoadModal
+    savedLists={savedLists}
+    loadList={loadList}
+    deleteList={deleteList}
+    setShowLoadModal={setShowLoadModal}
+  />
+)}
+{showCompatibilityModal && <CompatibilityModal />}
+      </div> {/* Close inner div */}
+    </div>   {/* Close outer div */}
+  );        {/* Close return */}
+}          {/* Close function */}
 export default MovieTracker;
