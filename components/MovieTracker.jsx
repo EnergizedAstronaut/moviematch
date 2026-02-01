@@ -729,7 +729,9 @@ async function deleteList(key) {
         autoFocus
       />
 
-      {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
+      {saveMessage && (
+        <p className="text-sm mb-4 text-center">{saveMessage}</p>
+      )}
 
       <div className="flex gap-3">
         {/* Cancel button */}
@@ -744,16 +746,18 @@ async function deleteList(key) {
           Cancel
         </button>
 
-       <button
-  onClick={saveCurrentList} // just call it directly
-  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
->
-  Save List
-</button>
+        {/* Save List button */}
+        <button
+          onClick={saveCurrentList}
+          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+        >
+          Save List
+        </button>
       </div>
     </div>
   </div>
 );
+
   // ─── LoadModal ─────────────────────────────────────────────────────────────
   const LoadModal = ({
   savedLists,
