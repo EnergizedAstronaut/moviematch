@@ -202,9 +202,9 @@ export default function MovieTracker() {
     setLoading(true);
     try {
       const [dRes, cRes, pRes] = await Promise.all([
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
-        fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US&primary_release_date.gte=1985-01-01`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}&primary_release_date.gte=1985-01-01`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}&primary_release_date.gte=1985-01-01`),
       ]);
       const details = await dRes.json();
       const credits = await cRes.json();
