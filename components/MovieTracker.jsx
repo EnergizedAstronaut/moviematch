@@ -956,6 +956,7 @@ const SaveModal = ({
  // ═══════════════════════════════════════════════════════════════════════════
 // MAIN RENDER
 // ═══════════════════════════════════════════════════════════════════════════
+return (
     <div className="min-h-screen bg-black text-white">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
@@ -1240,31 +1241,30 @@ const SaveModal = ({
         </div>
       )}
 
-    {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-{selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    onSave={handleSave}
-  />
-)}
-{showLoadModal && (
-  <LoadModal
-    savedLists={savedLists}
-    loadList={loadList}
-    deleteList={deleteList}
-    setShowLoadModal={setShowLoadModal}
-  />
-)}
-{showCompatibilityModal && <CompatibilityModal />}
-      </div> 
-    </div>   
-  );        
-}         
-
-export default MovieTracker;
+              {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+            <div>
+              {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+              {showSaveModal && (
+                <SaveModal
+                  listName={listName}
+                  setListName={setListName}
+                  saveMessage={saveMessage}
+                  setShowSaveModal={setShowSaveModal}
+                  setSaveMessage={setSaveMessage}
+                  onSave={handleSave}
+                />
+              )}
+              {showLoadModal && (
+                <LoadModal
+                  savedLists={savedLists}
+                  loadList={loadList}
+                  deleteList={deleteList}
+                  setShowLoadModal={setShowLoadModal}
+                />
+              )}
+              {showCompatibilityModal && <CompatibilityModal />}
+            </div>
+                  
+      
+      export default MovieTracker;
 
