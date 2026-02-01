@@ -956,7 +956,8 @@ const SaveModal = ({
  // ═══════════════════════════════════════════════════════════════════════════
 // MAIN RENDER
 // ═══════════════════════════════════════════════════════════════════════════
-  <div className="min-h-screen bg-black text-white">
+  return (
+    <div className="min-h-screen bg-black text-white">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* ─── Header ──────────────────────────────────────────────────────── */}
       <div className="mb-12">
@@ -1263,6 +1264,6 @@ const SaveModal = ({
       {showCompatibilityModal && <CompatibilityModal />}
     </div>
   </div>
-);
-
+  );
+}
 export default MovieTracker;
