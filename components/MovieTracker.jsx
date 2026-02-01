@@ -186,16 +186,7 @@ async function loadSavedLists() {
   }
 }
 
-async function saveCurrentList({
-  listName,
-  person1Name,
-  person2Name,
-  person1Movies,
-  person2Movies,
-  setSaveMessage,
-  setShowSaveModal,
-  setListName
-}) {
+async function saveCurrentList() {
   if (!hasPersistentStorage) return;
 
   if (!listName.trim()) {
@@ -739,27 +730,27 @@ async function deleteList(key) {
 
       {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
 
-      <div className="flex gap-3">
-        {/* Cancel button */}
-        <button
-          onClick={() => {
-            setShowSaveModal(false);
-            setListName("");
-            setSaveMessage("");
-          }}
-          className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Cancel
-        </button>
+     <div className="flex gap-3">
+  {/* Cancel button */}
+  <button
+    onClick={() => {
+      setShowSaveModal(false);
+      setListName("");
+      setSaveMessage("");
+    }}
+    className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+  >
+    Cancel
+  </button>
 
-        {/* Save List button */}
-        <button
-          onClick={saveCurrentList}
-          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Save List
-        </button>
-      </div>
+  {/* Save List button */}
+  <button
+    onClick={saveCurrentList}   // <-- this is where you put it
+    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+  >
+    Save List
+  </button>
+</div>
     </div>
   </div>
 );
