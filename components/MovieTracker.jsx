@@ -752,12 +752,28 @@ export default function MovieTracker() {
                   <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
                 </div>
               )}
-        {/* Modals */}
-        {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
-        {showSaveModal && <SaveModal/>}
-        {showLoadModal && <LoadModal/>}
-        {showCompatibilityModal && <CompatibilityModal/>}
-      </div>
-    </div>
-  );
+        {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+          <>
+            {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+            {showSaveModal && (
+              <SaveModal
+                listName={listName}
+                setListName={setListName}
+                saveMessage={saveMessage}
+                setShowSaveModal={setShowSaveModal}
+                setSaveMessage={setSaveMessage}
+                onSave={handleSave}
+              />
+            )}
+            {showLoadModal && (
+              <LoadModal
+                savedLists={savedLists}
+                loadList={loadList}
+                deleteList={deleteList}
+                setShowLoadModal={setShowLoadModal}
+              />
+            )}
+            {showCompatibilityModal && <CompatibilityModal />}
+          </>
+
 }
