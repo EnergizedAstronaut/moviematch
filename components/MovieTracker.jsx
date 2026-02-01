@@ -187,7 +187,10 @@ async function loadSavedLists() {
 }
 
 async function saveCurrentList() {
-  if (!hasPersistentStorage) return;
+  if (!hasPersistentStorage) {
+    setSaveMessage("Persistent storage unavailable!");
+    return;
+  }
 
   if (!listName.trim()) {
     setSaveMessage("Please enter a list name");
@@ -209,6 +212,8 @@ async function saveCurrentList() {
     );
 
     setSaveMessage("✅ List saved successfully!");
+
+    // Close modal after short delay
     setTimeout(() => {
       setShowSaveModal(false);
       setSaveMessage("");
@@ -221,6 +226,7 @@ async function saveCurrentList() {
     setSaveMessage("❌ Error saving list.");
   }
 }
+
 async function loadList(key) {
   if (!hasPersistentStorage) return;
 
@@ -750,12 +756,13 @@ const SaveModal = ({
           </button>
 
           {/* Save List Button */}
-          <button
-            onClick={saveCurrentList} // call the function passed from parent
-            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-          >
-            Save List
-          </button>
+         <button
+  onClick={saveCurrentList} // call directly
+  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+>
+  Save List
+</button>
+
         </div>
       </div>
     </div>
