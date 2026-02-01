@@ -744,13 +744,24 @@ async function deleteList(key) {
           Cancel
         </button>
 
-        {/* Save List button */}
-        <button
-          onClick={saveCurrentList} // just call it directly
-          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Save List
-        </button>
+       <button
+  onClick={() =>
+    saveCurrentList({
+      listName,
+      person1Name,
+      person2Name,
+      person1Movies,
+      person2Movies,
+      setSaveMessage,
+      setShowSaveModal,
+      setListName,
+    })
+  }
+  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+>
+  Save List
+</button>
+
       </div>
     </div>
   </div>
@@ -1238,7 +1249,17 @@ async function deleteList(key) {
     saveMessage={saveMessage}
     setShowSaveModal={setShowSaveModal}
     setSaveMessage={setSaveMessage}
-    saveCurrentList={saveCurrentList}
+    saveCurrentList={() =>
+      saveCurrentList({
+        listName,
+        person1Name,
+        person2Name,
+        person1Movies,
+        person2Movies,
+        setSaveMessage,
+        setShowSaveModal,
+        setListName,
+      })
   />
 )}
 {showLoadModal && (
