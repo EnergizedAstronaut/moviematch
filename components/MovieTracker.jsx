@@ -119,112 +119,145 @@ const MovieTracker = () => {
       setCompatibilityScore(null);
     }
   }, [person1Movies, person2Movies]);
+// ─── hasStorage helpers ──────────────────────────────────────────────────
+const hasLocalStorage =
+  typeof window !== "undefined" &&
+  typeof window.localStorage !== "undefined";
 
-  // ─── localStorage helpers ──────────────────────────────────────────────────
-  function loadFromLocalStorage() {
-    try {
-      const p1 = localStorage.getItem("person1_movies");
-      const p2 = localStorage.getItem("person2_movies");
-      const n1 = localStorage.getItem("person1_name");
-      const n2 = localStorage.getItem("person2_name");
-      if (p1) setPerson1Movies(JSON.parse(p1));
-      if (p2) setPerson2Movies(JSON.parse(p2));
-      if (n1) setPerson1Name(n1);
-      if (n2) setPerson2Name(n2);
-    } catch (e) {
-      console.error("localStorage load error:", e);
-    }
+const hasPersistentStorage =
+  typeof window !== "undefined" &&
+  typeof window.storage !== "undefined";
+
+// ─── localStorage helpers ──────────────────────────────────────────────────
+function loadFromLocalStorage() {
+  if (!hasLocalStorage) return;
+
+  try {
+    const p1 = localStorage.getItem("person1_movies");
+    const p2 = localStorage.getItem("person2_movies");
+    const n1 = localStorage.getItem("person1_name");
+    const n2 = localStorage.getItem("person2_name");
+
+    if (p1) setPerson1Movies(JSON.parse(p1));
+    if (p2) setPerson2Movies(JSON.parse(p2));
+    if (n1) setPerson1Name(n1);
+    if (n2) setPerson2Name(n2);
+  } catch (e) {
+    console.error("localStorage load error:", e);
+  }
+}
+
+function saveToLocalStorage(key, data) {
+  if (!hasLocalStorage) return;
+
+  try {
+    localStorage.setItem(key, typeof data === "string" ? data : JSON.stringify(data));
+  } catch (e) {
+    console.error("localStorage save error:", e);
+  }
+}
+
+// ─── Persistent Storage (window.storage) ──────────────────────────────────
+async function loadSavedLists() {
+  if (!hasPersistentStorage) {
+    setSavedLists([]);
+    return;
   }
 
-  function saveToLocalStorage(key, data) {
-    try {
-      if (typeof window === "undefined") return;
-      localStorage.setItem(key, typeof data === "string" ? data : JSON.stringify(data));
-    } catch (e) {
-      console.error("localStorage save error:", e);
-    }
-  }
-
-  // ─── Persistent Storage (window.storage) ──────────────────────────────────
-  async function loadSavedLists() {
-    try {
-      const result = await window.storage.list("movielist:");
-      if (result && result.keys) {
-        const lists = [];
-        for (const key of result.keys) {
-          try {
-            const item = await window.storage.get(key);
-            if (item && item.value) lists.push({ key, ...JSON.parse(item.value) });
-          } catch {}
+  try {
+    const result = await window.storage.list("movielist:");
+    if (result?.keys) {
+      const lists = [];
+      for (const key of result.keys) {
+        try {
+          const item = await window.storage.get(key);
+          if (item?.value) lists.push({ key, ...JSON.parse(item.value) });
+        } catch (e) {
+          console.error("Failed to parse storage item:", e);
         }
-        setSavedLists(lists);
       }
-    } catch {
+      setSavedLists(lists);
+    } else {
       setSavedLists([]);
     }
+  } catch (e) {
+    console.error("Failed to load saved lists:", e);
+    setSavedLists([]);
+  }
+}
+
+async function saveCurrentList() {
+  if (!hasPersistentStorage) return;
+
+  if (!listName.trim()) {
+    setSaveMessage("Please enter a list name");
+    return;
   }
 
-  async function saveCurrentList() {
-    if (!listName.trim()) {
-      setSaveMessage("Please enter a list name");
-      return;
-    }
-    try {
-      const key = `movielist:${listName.toLowerCase().replace(/\s+/g, "-")}`;
-      await window.storage.set(
-        key,
-        JSON.stringify({
-          name: listName,
-          person1Name,
-          person2Name,
-          person1Movies,
-          person2Movies,
-          savedAt: new Date().toISOString(),
-        })
-      );
-      setSaveMessage("✅ List saved successfully!");
-      setTimeout(() => {
-        setShowSaveModal(false);
-        setSaveMessage("");
-        setListName("");
-      }, 1500);
-      await loadSavedLists();
-    } catch {
-      setSaveMessage("❌ Error saving list.");
-    }
+  try {
+    const key = `movielist:${listName.toLowerCase().replace(/\s+/g, "-")}`;
+    await window.storage.set(
+      key,
+      JSON.stringify({
+        name: listName,
+        person1Name,
+        person2Name,
+        person1Movies,
+        person2Movies,
+        savedAt: new Date().toISOString(),
+      })
+    );
+    setSaveMessage("✅ List saved successfully!");
+    setTimeout(() => {
+      setShowSaveModal(false);
+      setSaveMessage("");
+      setListName("");
+    }, 1500);
+    await loadSavedLists();
+  } catch (e) {
+    console.error("Error saving list:", e);
+    setSaveMessage("❌ Error saving list.");
   }
+}
 
-  async function loadList(key) {
-    try {
-      const result = await window.storage.get(key);
-      if (result && result.value) {
-        const data = JSON.parse(result.value);
-        setPerson1Name(data.person1Name);
-        setPerson2Name(data.person2Name);
-        setPerson1Movies(data.person1Movies);
-        setPerson2Movies(data.person2Movies);
-        saveToLocalStorage("person1_name", data.person1Name);
-        saveToLocalStorage("person2_name", data.person2Name);
-        saveToLocalStorage("person1_movies", data.person1Movies);
-        saveToLocalStorage("person2_movies", data.person2Movies);
-        setShowLoadModal(false);
-        setActiveTab("compare");
-      }
-    } catch {
-      alert("Failed to load list.");
+async function loadList(key) {
+  if (!hasPersistentStorage) return;
+
+  try {
+    const result = await window.storage.get(key);
+    if (result?.value) {
+      const data = JSON.parse(result.value);
+      setPerson1Name(data.person1Name);
+      setPerson2Name(data.person2Name);
+      setPerson1Movies(data.person1Movies);
+      setPerson2Movies(data.person2Movies);
+
+      saveToLocalStorage("person1_name", data.person1Name);
+      saveToLocalStorage("person2_name", data.person2Name);
+      saveToLocalStorage("person1_movies", data.person1Movies);
+      saveToLocalStorage("person2_movies", data.person2Movies);
+
+      setShowLoadModal(false);
+      setActiveTab("compare");
     }
+  } catch (e) {
+    console.error("Failed to load list:", e);
+    alert("Failed to load list.");
   }
+}
 
-  async function deleteList(key) {
-    if (!confirm("Delete this saved list?")) return;
-    try {
-      await window.storage.delete(key);
-      await loadSavedLists();
-    } catch {
-      alert("Failed to delete list.");
-    }
+async function deleteList(key) {
+  if (!hasPersistentStorage) return;
+  if (!confirm("Delete this saved list?")) return;
+
+  try {
+    await window.storage.delete(key);
+    await loadSavedLists();
+  } catch (e) {
+    console.error("Failed to delete list:", e);
+    alert("Failed to delete list.");
   }
-
+}
   // ─── TMDB Fetchers ─────────────────────────────────────────────────────────
   async function fetchTrending() {
     try {
