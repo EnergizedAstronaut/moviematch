@@ -768,10 +768,6 @@ const SaveModal = ({
     </div>
   );
 };
-
-export default SaveModal;
-
-
   // ─── LoadModal ─────────────────────────────────────────────────────────────
   const LoadModal = ({
   savedLists,
