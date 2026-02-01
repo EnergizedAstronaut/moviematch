@@ -752,13 +752,6 @@ export default function MovieTracker() {
                   <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
                 </div>
               )}
-        {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-         return (
-  <div className="min-h-screen bg-black text-white">
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Main content (header, tabs, movie grids, etc.) */}
-      ...
-
       {/* Modals */}
       {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
       {showSaveModal && (
@@ -780,9 +773,10 @@ export default function MovieTracker() {
         />
       )}
       {showCompatibilityModal && <CompatibilityModal />}
-    </div>  {/* closes max-w-7xl container */}
-  </div>    {/* closes min-h-screen */}
-);        {/* closes return statement */}
-}         {/* closes function */}
+    </div> {/* closes max-w-7xl container */}
+  </div> {/* closes min-h-screen */}
+); // closes return statement
+} // closes function
+
 export default MovieTracker;
 
