@@ -191,7 +191,7 @@ export default function MovieTracker() {
     if (!query.trim()) { setSearchResults([]); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US`);
+      const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&primary_release_date.gte=1985-01-01`);
       const data = await res.json();
       setSearchResults(data.results || []);
     } catch(e) {}
@@ -278,7 +278,7 @@ export default function MovieTracker() {
         const top = shared.slice(0,3);
         if (togethernessMode) {
           const pages = await Promise.all(top.map(g=>
-            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${g}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.5`)
+            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${g}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.5&primary_release_date.gte=1985-01-01`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
           ));
           const pool = pages.flat();
@@ -295,11 +295,11 @@ export default function MovieTracker() {
           scored.forEach(m=>{ if(!map.has(m.id)||map.get(m.id)._score<m._score) map.set(m.id,m); });
           results = [...map.values()].sort((a,b)=>b._score-a._score);
         } else {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${top.slice(0,2).join(",")}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${top.slice(0,2).join(",")}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=1985-01-01`);
           results = (await res.json()).results||[];
         }
       } else {
-        const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.5`);
+        const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=1985-01-01`);
         results = (await res.json()).results||[];
       }
       setRecommendations(results.filter(m=>!existingIds.has(m.id)).slice(0,12));
