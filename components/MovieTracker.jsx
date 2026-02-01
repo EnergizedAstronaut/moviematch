@@ -1067,16 +1067,19 @@ async function deleteList(key) {
 </div>
 
 {/* ─── Save Modal ───────────────────────────────────────────────────── */}
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    saveCurrentList={saveCurrentList}
-  />
-)}
+<SaveModal
+  listName={listName}
+  setListName={setListName}
+  saveMessage={saveMessage}
+  setShowSaveModal={setShowSaveModal}
+  setSaveMessage={setSaveMessage}
+  saveCurrentList={saveCurrentList}
+  person1Name={person1Name}
+  person2Name={person2Name}
+  person1Movies={person1Movies}
+  person2Movies={person2Movies}
+/>
+
 
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
