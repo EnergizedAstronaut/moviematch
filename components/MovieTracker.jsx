@@ -745,23 +745,11 @@ async function deleteList(key) {
         </button>
 
        <button
-  onClick={() =>
-    saveCurrentList({
-      listName,
-      person1Name,
-      person2Name,
-      person1Movies,
-      person2Movies,
-      setSaveMessage,
-      setShowSaveModal,
-      setListName,
-    })
-  }
+  onClick={saveCurrentList} // just call it directly
   className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
 >
   Save List
 </button>
-
       </div>
     </div>
   </div>
@@ -1045,18 +1033,28 @@ async function deleteList(key) {
 </div>
 
 {/* ─── Save Modal ───────────────────────────────────────────────────── */}
-<SaveModal
-  listName={listName}
-  setListName={setListName}
-  saveMessage={saveMessage}
-  setShowSaveModal={setShowSaveModal}
-  setSaveMessage={setSaveMessage}
-  saveCurrentList={saveCurrentList}
-  person1Name={person1Name}
-  person2Name={person2Name}
-  person1Movies={person1Movies}
-  person2Movies={person2Movies}
-/>
+{showSaveModal && (
+  <SaveModal
+    listName={listName}
+    setListName={setListName}
+    saveMessage={saveMessage}
+    setShowSaveModal={setShowSaveModal}
+    setSaveMessage={setSaveMessage}
+    saveCurrentList={() =>
+      saveCurrentList({
+        listName,
+        person1Name,
+        person2Name,
+        person1Movies,
+        person2Movies,
+        setSaveMessage,
+        setShowSaveModal,
+        setListName,
+      })
+    }
+  />
+)}
+
 
 
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
