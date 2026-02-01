@@ -782,7 +782,8 @@ const SaveModal = ({
           {/* Save List Button */}
 
  <button
-  onClick={onSave}
+  onClick={onSave}>Save</button>
+
   className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
 >
   Save List
