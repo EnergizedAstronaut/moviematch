@@ -123,25 +123,25 @@ const MovieTracker = () => {
 
  // ─── HANDLE SAVE ─────────────────────────────────────────────
 const handleSave = () => {
-  if (!listName) {
+  if (!listName.trim()) {
     setSaveMessage("Please enter a list name before saving.");
     return;
   }
 
-  saveCurrentList({
-    listName,
-    person1Name,
-    person2Name,
-    person1Movies,
-    person2Movies,
-    setSaveMessage,
-    setShowSaveModal,
-    setListName,
-  });
+  saveCurrentList(); // no arguments
+};
   setShowSaveModal(false);
 setSaveMessage("Saved successfully!");
 
 };
+ // ─── HANDLE OPENLOADMODAL ─────────────────────────────────────────────
+const handleOpenLoadModal = async () => {
+  await loadSavedLists();
+  setShowLoadModal(true);
+};
+ // ─── UPDATE BUTTON ─────────────────────────────────────────────
+<button onClick={handleOpenLoadModal}>Load Lists</button>
+
 
 // ─── hasStorage helpers ──────────────────────────────────────────────────
 const hasLocalStorage =
