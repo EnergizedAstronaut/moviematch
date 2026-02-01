@@ -1078,9 +1078,10 @@ const SaveModal = ({
     saveMessage={saveMessage}
     setShowSaveModal={setShowSaveModal}
     setSaveMessage={setSaveMessage}
-    onSave={handleSave} // This is the correct prop
+    onSave={handleSave} // must be onSave
   />
 )}
+
 
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
