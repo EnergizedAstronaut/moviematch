@@ -953,340 +953,317 @@ const SaveModal = ({
       </div>
     );
   };
+ // ═══════════════════════════════════════════════════════════════════════════
+// MAIN RENDER
+// ═══════════════════════════════════════════════════════════════════════════
+return (
+  <div className="min-h-screen bg-black text-white">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* ─── Header ──────────────────────────────────────────────────────── */}
+      <div className="mb-12">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+          <div>
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent mb-2">
+              MovieMatch
+            </h1>
+            <p className="text-zinc-400">Discover movies you'll both love</p>
+          </div>
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // MAIN RENDER
-  // ═══════════════════════════════════════════════════════════════════════════
-  return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ─── Header ──────────────────────────────────────────────────────── */}
-<div className="mb-12">
-  <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-    <div>
-      <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent mb-2">
-        MovieMatch
-      </h1>
-      <p className="text-zinc-400">Discover movies you'll both love</p>
-    </div>
-
-    <div className="flex flex-wrap gap-3">
-      {/* Save Lists */}
-      <button
-        onClick={() => setShowSaveModal(true)}
-        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
-      >
-        <Film className="w-5 h-5" />
-        Save Lists
-      </button>
-
-      {/* Load Lists */}
-      <button
-        onClick={() => {
-          loadSavedLists();
-          setShowLoadModal(true);
-        }}
-        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
-      >
-        <Play className="w-5 h-5" />
-        Load Lists
-      </button>
-
-      {/* Compatibility Stats */}
-      <button
-        onClick={() => {
-          if (compatibilityScore !== null) setShowCompatibilityModal(true);
-        }}
-        disabled={person1Movies.length === 0 || person2Movies.length === 0}
-        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-        title={
-          person1Movies.length === 0 || person2Movies.length === 0
-            ? "Add movies to both lists first"
-            : "View compatibility"
-        }
-      >
-        <BarChart3 className="w-5 h-5" />
-        {compatibilityScore !== null ? `${compatibilityScore}%` : "Stats"}
-      </button>
-
-      {/* Togetherness Mode */}
-      <button
-        onClick={() => setTogethernessMode(!togethernessMode)}
-        className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-          togethernessMode
-            ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
-            : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
-        }`}
-      >
-        <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
-        Togetherness
-        {compatibilityScore !== null && togethernessMode && (
-          <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
-            {compatibilityScore}%
-          </span>
-        )}
-      </button>
-    </div>
-  </div>
-
-  {/* Name Inputs */}
-  <div className="grid md:grid-cols-2 gap-4 mb-6">
-    <input
-      type="text"
-      value={person1Name}
-      onChange={(e) => {
-        setPerson1Name(e.target.value);
-        saveToLocalStorage("person1_name", e.target.value);
-      }}
-      placeholder="First person's name"
-      className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-    />
-    <input
-      type="text"
-      value={person2Name}
-      onChange={(e) => {
-        setPerson2Name(e.target.value);
-        saveToLocalStorage("person2_name", e.target.value);
-      }}
-      placeholder="Second person's name"
-      className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-    />
-  </div>
-
-  {/* Search */}
-  <div className="relative">
-    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
-    <input
-      type="text"
-      placeholder="Search for movies..."
-      value={searchQuery}
-      onChange={(e) => {
-        setSearchQuery(e.target.value);
-        searchMovies(e.target.value);
-      }}
-      className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"
-    />
-  </div>
-</div>
-
-{/* ─── Save Modal ───────────────────────────────────────────────────── */}
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    onSave={handleSave} // must be onSave
-  />
-)}
-
-
-{/* ─── Load Modal ───────────────────────────────────────────────────── */}
-{showLoadModal && (
-  <LoadModal
-    savedLists={savedLists}
-    loadList={loadList}
-    deleteList={deleteList}
-    setShowLoadModal={setShowLoadModal}
-  />
-)}
-        {/* ─── Tabs ────────────────────────────────────────────────────────── */}
-        <div className="flex gap-3 mb-8 border-b border-zinc-800 pb-px">
-          {[
-            { id: "search", icon: Search, label: "Discover" },
-            { id: "compare", icon: Users, label: "Your Lists" },
-            { id: "recommendations", icon: Heart, label: "For You" },
-          ].map((tab) => (
+          <div className="flex flex-wrap gap-3">
+            {/* Save Lists */}
             <button
-              key={tab.id}
+              onClick={() => setShowSaveModal(true)}
+              className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+            >
+              <Film className="w-5 h-5" />
+              Save Lists
+            </button>
+
+            {/* Load Lists */}
+            <button
               onClick={() => {
-                setActiveTab(tab.id);
-                if (tab.id === "recommendations") generateRecommendations();
+                loadSavedLists();
+                setShowLoadModal(true);
               }}
-              className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${
-                activeTab === tab.id ? "bg-zinc-900 text-white border-b-2 border-red-500" : "text-zinc-500 hover:text-zinc-300"
+              className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+            >
+              <Play className="w-5 h-5" />
+              Load Lists
+            </button>
+
+            {/* Compatibility Stats */}
+            <button
+              onClick={() => {
+                if (compatibilityScore !== null) setShowCompatibilityModal(true);
+              }}
+              disabled={person1Movies.length === 0 || person2Movies.length === 0}
+              className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              title={
+                person1Movies.length === 0 || person2Movies.length === 0
+                  ? "Add movies to both lists first"
+                  : "View compatibility"
+              }
+            >
+              <BarChart3 className="w-5 h-5" />
+              {compatibilityScore !== null ? `${compatibilityScore}%` : "Stats"}
+            </button>
+
+            {/* Togetherness Mode */}
+            <button
+              onClick={() => setTogethernessMode(!togethernessMode)}
+              className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                togethernessMode
+                  ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
+                  : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
               }`}
             >
-              <tab.icon className="w-5 h-5" />
-              {tab.label}
-              {tab.id === "compare" && commonMovies.length > 0 && (
-                <span className="bg-pink-600 text-white text-xs px-2 py-0.5 rounded-full">{commonMovies.length}</span>
+              <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
+              Togetherness
+              {compatibilityScore !== null && togethernessMode && (
+                <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+                  {compatibilityScore}%
+                </span>
               )}
             </button>
-          ))}
+          </div>
         </div>
 
-        {/* ─── Loading Spinner ─────────────────────────────────────────────── */}
-        {loading && (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto" />
-          </div>
-        )}
+        {/* Name Inputs */}
+        <div className="grid md:grid-cols-2 gap-4 mb-6">
+          <input
+            type="text"
+            value={person1Name}
+            onChange={(e) => {
+              setPerson1Name(e.target.value);
+              saveToLocalStorage("person1_name", e.target.value);
+            }}
+            placeholder="First person's name"
+            className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+          <input
+            type="text"
+            value={person2Name}
+            onChange={(e) => {
+              setPerson2Name(e.target.value);
+              saveToLocalStorage("person2_name", e.target.value);
+            }}
+            placeholder="Second person's name"
+            className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+          />
+        </div>
 
-        {/* ─── DISCOVER TAB ────────────────────────────────────────────────── */}
-        {activeTab === "search" && !loading && (
-          <div>
-            {searchResults.length > 0 ? (
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search for movies..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              searchMovies(e.target.value);
+            }}
+            className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"
+          />
+        </div>
+      </div>
+
+      {/* ─── Tabs ────────────────────────────────────────────────────────── */}
+      <div className="flex gap-3 mb-8 border-b border-zinc-800 pb-px">
+        {[
+          { id: "search", icon: Search, label: "Discover" },
+          { id: "compare", icon: Users, label: "Your Lists" },
+          { id: "recommendations", icon: Heart, label: "For You" },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              if (tab.id === "recommendations") generateRecommendations();
+            }}
+            className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${
+              activeTab === tab.id ? "bg-zinc-900 text-white border-b-2 border-red-500" : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <tab.icon className="w-5 h-5" />
+            {tab.label}
+            {tab.id === "compare" && commonMovies.length > 0 && (
+              <span className="bg-pink-600 text-white text-xs px-2 py-0.5 rounded-full">{commonMovies.length}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Loading Spinner ─────────────────────────────────────────────── */}
+      {loading && (
+        <div className="text-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto" />
+        </div>
+      )}
+
+      {/* ─── DISCOVER TAB ────────────────────────────────────────────────── */}
+      {activeTab === "search" && !loading && (
+        <div>
+          {searchResults.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {searchResults.map((m) => (
+                <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} showActions />
+              ))}
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <TrendingUp className="w-6 h-6 text-red-500" />
+                <h2 className="text-2xl font-bold">Trending This Week</h2>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {searchResults.map((m) => (
+                {trendingMovies.map((m) => (
                   <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} showActions />
                 ))}
               </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <TrendingUp className="w-6 h-6 text-red-500" />
-                  <h2 className="text-2xl font-bold">Trending This Week</h2>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {trendingMovies.map((m) => (
-                    <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} showActions />
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ─── YOUR LISTS TAB ──────────────────────────────────────────────── */}
-        {activeTab === "compare" && !loading && (
-          <div className="space-y-8">
-            {/* Perfect Match */}
-            {commonMovies.length > 0 && (
-              <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
-                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                  <Heart className="w-7 h-7 text-pink-400 fill-pink-400" />
-                  Perfect Match ({commonMovies.length})
-                </h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {commonMovies.map((m) => (
-                    <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Two columns */}
-            <div className="grid lg:grid-cols-2 gap-6">
-              {[
-                { num: 1, name: person1Name, movies: person1Movies, color: "blue" },
-                { num: 2, name: person2Name, movies: person2Movies, color: "purple" },
-              ].map((p) => (
-                <div key={p.num} className="bg-zinc-900/50 backdrop-blur rounded-2xl p-6 border border-zinc-800">
-                  <h2 className={`text-xl font-bold mb-4 text-${p.color}-400`}>
-                    {p.name}'s List ({p.movies.length})
-                  </h2>
-                  {p.movies.length === 0 ? (
-                    <div className="text-center py-16">
-                      <Film className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-                      <p className="text-zinc-500 mb-4">No movies yet</p>
-                      <button onClick={() => setActiveTab("search")} className={`text-${p.color}-400 hover:text-${p.color}-300 font-medium`}>
-                        Start adding movies →
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {p.movies.map((m) => (
-                        <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} personNum={p.num} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {/* ─── FOR YOU TAB ─────────────────────────────────────────────────── */}
-        {activeTab === "recommendations" && !loading && (
-          <div className="space-y-6">
-            {/* Togetherness banner */}
-            {togethernessMode && (
-              <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
-                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
-                  <Sparkles className="w-7 h-7 text-yellow-400" />✨ Togetherness Mode Active
+      {/* ─── YOUR LISTS TAB ──────────────────────────────────────────────── */}
+      {activeTab === "compare" && !loading && (
+        <div className="space-y-8">
+          {/* Perfect Match */}
+          {commonMovies.length > 0 && (
+            <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <Heart className="w-7 h-7 text-pink-400 fill-pink-400" />
+                Perfect Match ({commonMovies.length})
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {commonMovies.map((m) => (
+                  <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Two columns */}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {[
+              { num: 1, name: person1Name, movies: person1Movies, color: "blue" },
+              { num: 2, name: person2Name, movies: person2Movies, color: "purple" },
+            ].map((p) => (
+              <div key={p.num} className="bg-zinc-900/50 backdrop-blur rounded-2xl p-6 border border-zinc-800">
+                <h2 className={`text-xl font-bold mb-4 ${p.color === "blue" ? "text-blue-400" : "text-purple-400"}`}>
+                  {p.name}'s List ({p.movies.length})
                 </h2>
-                <p className="text-zinc-300 mb-2">Finding movies that match <strong>both</strong> of your tastes:</p>
-                <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
-                  <li>Analyzing top 3 shared genres from both lists</li>
-                  <li>Only showing highly-rated films (6.5+ rating)</li>
-                  <li>Smart scoring based on genre overlap and popularity</li>
-                  <li>Bonus points for newer movies (2020+)</li>
-                </ul>
-                {commonMovies.length > 0 && (
-                  <div className="mt-4 bg-pink-900/20 rounded-lg p-3 border border-pink-800/30">
-                    <p className="text-pink-300 text-sm flex items-center gap-2">
-                      <Heart className="w-4 h-4 fill-current" />
-                      You have {commonMovies.length} movie{commonMovies.length > 1 ? "s" : ""} in common!
-                    </p>
+                {p.movies.length === 0 ? (
+                  <div className="text-center py-16">
+                    <Film className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
+                    <p className="text-zinc-500 mb-4">No movies yet</p>
+                    <button
+                      onClick={() => setActiveTab("search")}
+                      className={`${p.color === "blue" ? "text-blue-400 hover:text-blue-300" : "text-purple-400 hover:text-purple-300"} font-medium`}
+                    >
+                      Start adding movies →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {p.movies.map((m) => (
+                      <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} personNum={p.num} />
+                    ))}
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Recs header + refresh */}
-            <div className="bg-gradient-to-r from-purple-950/50 to-pink-950/50 backdrop-blur rounded-2xl p-8 border border-purple-900/20">
-              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
-                <Heart className="w-7 h-7 text-pink-400" />
-                {togethernessMode ? "Perfect for Both of You" : "Recommended for You"}
-              </h2>
-              <p className="text-zinc-400 mb-6">
-                {togethernessMode
-                  ? "Smart picks based on your shared genre preferences"
-                  : "Based on your shared interests and favorite genres"}
-              </p>
-              <button
-                onClick={generateRecommendations}
-                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-semibold px-6 py-3 rounded-xl transition-all"
-              >
-                Refresh Recommendations
-              </button>
-            </div>
-
-            {/* Grid or empty state */}
-            {recommendations.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {recommendations.map((m) => (
-                  <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} showActions />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
-                <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
-                <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
-              </div>
-            )}
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ─── FOR YOU TAB ─────────────────────────────────────────────────── */}
+      {activeTab === "recommendations" && !loading && (
+        <div className="space-y-6">
+          {/* Togetherness banner */}
+          {togethernessMode && (
+            <div className="bg-gradient-to-r from-pink-950/50 to-purple-950/50 backdrop-blur rounded-2xl p-8 border border-pink-900/20">
+              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+                <Sparkles className="w-7 h-7 text-yellow-400" />✨ Togetherness Mode Active
+              </h2>
+              <p className="text-zinc-300 mb-2">Finding movies that match <strong>both</strong> of your tastes:</p>
+              <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
+                <li>Analyzing top 3 shared genres from both lists</li>
+                <li>Only showing highly-rated films (6.5+ rating)</li>
+                <li>Smart scoring based on genre overlap and popularity</li>
+                <li>Bonus points for newer movies (2020+)</li>
+              </ul>
+              {commonMovies.length > 0 && (
+                <div className="mt-4 bg-pink-900/20 rounded-lg p-3 border border-pink-800/30">
+                  <p className="text-pink-300 text-sm flex items-center gap-2">
+                    <Heart className="w-4 h-4 fill-current" />
+                    You have {commonMovies.length} movie{commonMovies.length > 1 ? "s" : ""} in common!
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Recs header + refresh */}
+          <div className="bg-gradient-to-r from-purple-950/50 to-pink-950/50 backdrop-blur rounded-2xl p-8 border border-purple-900/20">
+            <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+              <Heart className="w-7 h-7 text-pink-400" />
+              {togethernessMode ? "Perfect for Both of You" : "Recommended for You"}
+            </h2>
+            <p className="text-zinc-400 mb-6">
+              {togethernessMode
+                ? "Smart picks based on your shared genre preferences"
+                : "Based on your shared interests and favorite genres"}
+            </p>
+            <button
+              onClick={generateRecommendations}
+              className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white font-semibold px-6 py-3 rounded-xl transition-all"
+            >
+              Refresh Recommendations
+            </button>
+          </div>
+
+          {/* Grid or empty state */}
+          {recommendations.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {recommendations.map((m) => (
+                <MovieCard key={m.id} movie={m} onSelect={(mv) => fetchMovieDetails(mv.id)} showActions />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+              <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+              <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
+              <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-     {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-{selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
-// Later in JSX
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    saveCurrentList={handleSave}
-  />
-)}
-{showLoadModal && (
-  <LoadModal
-    savedLists={savedLists}
-    loadList={loadList}
-    deleteList={deleteList}
-    setShowLoadModal={setShowLoadModal}
-  />
-)}
-{showCompatibilityModal && <CompatibilityModal />}
+      {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+      {showSaveModal && (
+        <SaveModal
+          listName={listName}
+          setListName={setListName}
+          saveMessage={saveMessage}
+          setShowSaveModal={setShowSaveModal}
+          setSaveMessage={setSaveMessage}
+          onSave={handleSave}
+        />
+      )}
+      {showLoadModal && (
+        <LoadModal
+          savedLists={savedLists}
+          loadList={loadList}
+          deleteList={deleteList}
+          setShowLoadModal={setShowLoadModal}
+        />
+      )}
+      {showCompatibilityModal && <CompatibilityModal />}
     </div>
-  );
-};
+  </div>
+);
 
 export default MovieTracker;
