@@ -186,7 +186,16 @@ async function loadSavedLists() {
   }
 }
 
-async function saveCurrentList() {
+async function saveCurrentList({
+  listName,
+  person1Name,
+  person2Name,
+  person1Movies,
+  person2Movies,
+  setSaveMessage,
+  setShowSaveModal,
+  setListName
+}) {
   if (!hasPersistentStorage) return;
 
   if (!listName.trim()) {
@@ -740,14 +749,24 @@ async function deleteList(key) {
           className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
         >
           Cancel
-        </button>
-
         <button
-          onClick={saveCurrentList}
-          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Save List
-        </button>
+  onClick={() =>
+    saveCurrentList({
+      listName,
+      person1Name,
+      person2Name,
+      person1Movies,
+      person2Movies,
+      setSaveMessage,
+      setShowSaveModal,
+      setListName
+    })
+  }
+  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+>
+  Save List
+</button>
+
       </div>
     </div>
   </div>
