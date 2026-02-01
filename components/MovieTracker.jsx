@@ -706,57 +706,64 @@ async function deleteList(key) {
     );
   };
 
- const SaveModal = ({
+const SaveModal = ({
   listName,
   setListName,
   saveMessage,
   setShowSaveModal,
   setSaveMessage,
   saveCurrentList,
-}) => (
-  <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
-      <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
-      <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
+}) => {
+  return (
+    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
+        <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
+        <p className="text-zinc-400 mb-6">
+          Give your movie lists a name to save them for later
+        </p>
 
-      <input
-        type="text"
-        placeholder="e.g., Movie Night Favorites"
-        value={listName}
-        onChange={(e) => setListName(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && saveCurrentList()}
-        className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        autoFocus
-      />
+        <input
+          type="text"
+          placeholder="e.g., Movie Night Favorites"
+          value={listName}
+          onChange={(e) => setListName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && saveCurrentList()}
+          className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          autoFocus
+        />
 
-      {saveMessage && (
-        <p className="text-sm mb-4 text-center">{saveMessage}</p>
-      )}
+        {saveMessage && (
+          <p className="text-sm mb-4 text-center">{saveMessage}</p>
+        )}
 
-      <div className="flex gap-3">
-        {/* Cancel button */}
-        <button
-          onClick={() => {
-            setShowSaveModal(false);
-            setListName("");
-            setSaveMessage("");
-          }}
-          className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Cancel
-        </button>
+        <div className="flex gap-3">
+          {/* Cancel Button */}
+          <button
+            onClick={() => {
+              setShowSaveModal(false);
+              setListName("");
+              setSaveMessage("");
+            }}
+            className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+          >
+            Cancel
+          </button>
 
-        {/* Save List button */}
-        <button
-          onClick={saveCurrentList}
-          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-        >
-          Save List
-        </button>
+          {/* Save List Button */}
+          <button
+            onClick={saveCurrentList} // call the function passed from parent
+            className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+          >
+            Save List
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
+
+export default SaveModal;
+
 
   // ─── LoadModal ─────────────────────────────────────────────────────────────
   const LoadModal = ({
@@ -1050,16 +1057,7 @@ const handleSave = () => {
   });
 };
 
-// Later in JSX
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    saveCurrentList={handleSave}
-  />
+
 )}
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
@@ -1244,6 +1242,7 @@ const handleSave = () => {
       {/* ─── Modals ──────────────────────────────────────────────────────────── */}
      {/* ─── Modals ──────────────────────────────────────────────────────────── */}
 {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+// Later in JSX
 {showSaveModal && (
   <SaveModal
     listName={listName}
@@ -1251,17 +1250,7 @@ const handleSave = () => {
     saveMessage={saveMessage}
     setShowSaveModal={setShowSaveModal}
     setSaveMessage={setSaveMessage}
-    saveCurrentList={() =>
-      saveCurrentList({
-        listName,
-        person1Name,
-        person2Name,
-        person1Movies,
-        person2Movies,
-        setSaveMessage,
-        setShowSaveModal,
-        setListName,
-      })
+    saveCurrentList={handleSave}
   />
 )}
 {showLoadModal && (
