@@ -705,70 +705,115 @@ async function deleteList(key) {
     );
   };
 
-  // ─── SaveModal ─────────────────────────────────────────────────────────────
-  const SaveModal = () => (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
-        <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
-        <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
-        <input
-          type="text"
-          placeholder="e.g., Date Night Favorites"
-          value={listName}
-          onChange={(e) => setListName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && saveCurrentList()}
-          className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-        {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
-        <div className="flex gap-3">
-          <button onClick={() => { setShowSaveModal(false); setListName(""); setSaveMessage(""); }} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Cancel</button>
-          <button onClick={saveCurrentList} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors">Save List</button>
-        </div>
+ const SaveModal = ({
+  listName,
+  setListName,
+  saveMessage,
+  setShowSaveModal,
+  setSaveMessage,
+  saveCurrentList,
+}) => (
+  <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
+      <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
+      <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
+
+      <input
+        type="text"
+        placeholder="e.g., Movie Night Favorites"
+        value={listName}
+        onChange={(e) => setListName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && saveCurrentList()}
+        className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
+        autoFocus
+      />
+
+      {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => {
+            setShowSaveModal(false);
+            setListName("");
+            setSaveMessage("");
+          }}
+          className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+        >
+          Cancel
+        </button>
+
+        <button
+          onClick={saveCurrentList}
+          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+        >
+          Save List
+        </button>
       </div>
     </div>
-  );
-
+  </div>
+);
   // ─── LoadModal ─────────────────────────────────────────────────────────────
-  const LoadModal = () => (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-2 text-white">Load Saved Lists</h2>
-        <p className="text-zinc-400 mb-6">Choose a saved list to restore</p>
+  const LoadModal = ({
+  savedLists,
+  loadList,
+  deleteList,
+  setShowLoadModal,
+}) => (
+  <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+      <h2 className="text-2xl font-bold mb-2 text-white">Load Saved Lists</h2>
+      <p className="text-zinc-400 mb-6">Choose a saved list to restore</p>
 
-        {savedLists.length === 0 ? (
-          <div className="text-center py-12">
-            <Film className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-            <p className="text-zinc-500">No saved lists yet</p>
-            <p className="text-zinc-600 text-sm mt-2">Create some lists and save them first!</p>
-          </div>
-        ) : (
-          <div className="space-y-3 mb-6">
-            {savedLists.map((list) => (
-              <div key={list.key} className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white mb-1">{list.name}</h3>
-                    <p className="text-sm text-zinc-400 mb-1">{list.person1Name} &amp; {list.person2Name}</p>
-                    <p className="text-xs text-zinc-500">
-                      {(list.person1Movies?.length || 0) + (list.person2Movies?.length || 0)} movies total •
-                      Saved {new Date(list.savedAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <button onClick={() => loadList(list.key)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Load</button>
-                    <button onClick={() => deleteList(list.key)} className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm transition-colors"><X className="w-4 h-4" /></button>
-                  </div>
+      {savedLists.length === 0 ? (
+        <div className="text-center py-12">
+          <Film className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+          <p className="text-zinc-500">No saved lists yet</p>
+          <p className="text-zinc-600 text-sm mt-2">Create some lists and save them first!</p>
+        </div>
+      ) : (
+        <div className="space-y-3 mb-6">
+          {savedLists.map((list) => (
+            <div key={list.key} className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-white mb-1">{list.name}</h3>
+                  <p className="text-sm text-zinc-400 mb-1">{list.person1Name} &amp; {list.person2Name}</p>
+                  <p className="text-xs text-zinc-500">
+                    {(list.person1Movies?.length || 0) + (list.person2Movies?.length || 0)} movies total •
+                    Saved {new Date(list.savedAt).toLocaleDateString()}
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => loadList(list.key)}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    Load
+                  </button>
+
+                  <button
+                    onClick={() => deleteList(list.key)}
+                    className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
+      )}
 
-        <button onClick={() => setShowLoadModal(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Close</button>
-      </div>
+      <button
+        onClick={() => setShowLoadModal(false)}
+        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+      >
+        Close
+      </button>
     </div>
-  );
-
+  </div>
+);
   // ─── CompatibilityModal ────────────────────────────────────────────────────
   const CompatibilityModal = () => {
     const details = getCompatibilityDetails();
@@ -800,7 +845,7 @@ async function deleteList(key) {
               {details.score >= 80 ? <>🔥 <span>Perfect Match!</span></>
                 : details.score >= 60 ? <>✨ <span>Great Compatibility</span></>
                 : details.score >= 40 ? <>🎬 <span>Good Match</span></>
-                : <>🌈 <span>Diverse Tastes</span></>
+                : <>⚜️<span>Diverse Tastes</span></>
               }
             </div>
           </div>
@@ -1120,10 +1165,27 @@ async function deleteList(key) {
       </div>
 
       {/* ─── Modals ──────────────────────────────────────────────────────────── */}
-      {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
-      {showSaveModal && <SaveModal />}
-      {showLoadModal && <LoadModal />}
-      {showCompatibilityModal && <CompatibilityModal />}
+     {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+{selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
+{showSaveModal && (
+  <SaveModal
+    listName={listName}
+    setListName={setListName}
+    saveMessage={saveMessage}
+    setShowSaveModal={setShowSaveModal}
+    setSaveMessage={setSaveMessage}
+    saveCurrentList={saveCurrentList}
+  />
+)}
+{showLoadModal && (
+  <LoadModal
+    savedLists={savedLists}
+    loadList={loadList}
+    deleteList={deleteList}
+    setShowLoadModal={setShowLoadModal}
+  />
+)}
+{showCompatibilityModal && <CompatibilityModal />}
     </div>
   );
 };
