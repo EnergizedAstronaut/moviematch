@@ -740,6 +740,7 @@ async function deleteList(key) {
       {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
 
       <div className="flex gap-3">
+        {/* Cancel button */}
         <button
           onClick={() => {
             setShowSaveModal(false);
@@ -749,28 +750,20 @@ async function deleteList(key) {
           className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
         >
           Cancel
-        <button
-  onClick={() =>
-    saveCurrentList({
-      listName,
-      person1Name,
-      person2Name,
-      person1Movies,
-      person2Movies,
-      setSaveMessage,
-      setShowSaveModal,
-      setListName
-    })
-  }
-  className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
->
-  Save List
-</button>
+        </button>
 
+        {/* Save List button */}
+        <button
+          onClick={saveCurrentList}
+          className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+        >
+          Save List
+        </button>
       </div>
     </div>
   </div>
 );
+
   // ─── LoadModal ─────────────────────────────────────────────────────────────
   const LoadModal = ({
   savedLists,
@@ -1008,38 +1001,68 @@ async function deleteList(key) {
       </button>
     </div>
   </div>
+
+  {/* Name Inputs */}
+  <div className="grid md:grid-cols-2 gap-4 mb-6">
+    <input
+      type="text"
+      value={person1Name}
+      onChange={(e) => {
+        setPerson1Name(e.target.value);
+        saveToLocalStorage("person1_name", e.target.value);
+      }}
+      placeholder="First person's name"
+      className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+    />
+    <input
+      type="text"
+      value={person2Name}
+      onChange={(e) => {
+        setPerson2Name(e.target.value);
+        saveToLocalStorage("person2_name", e.target.value);
+      }}
+      placeholder="Second person's name"
+      className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+    />
+  </div>
+
+  {/* Search */}
+  <div className="relative">
+    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
+    <input
+      type="text"
+      placeholder="Search for movies..."
+      value={searchQuery}
+      onChange={(e) => {
+        setSearchQuery(e.target.value);
+        searchMovies(e.target.value);
+      }}
+      className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"
+    />
+  </div>
 </div>
-          {/* Name Inputs */}
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <input
-              type="text"
-              value={person1Name}
-              onChange={(e) => { setPerson1Name(e.target.value); saveToLocalStorage("person1_name", e.target.value); }}
-              placeholder="First person's name"
-              className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-            />
-            <input
-              type="text"
-              value={person2Name}
-              onChange={(e) => { setPerson2Name(e.target.value); saveToLocalStorage("person2_name", e.target.value); }}
-              placeholder="Second person's name"
-              className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            />
-          </div>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-500 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search for movies..."
-              value={searchQuery}
-              onChange={(e) => { setSearchQuery(e.target.value); searchMovies(e.target.value); }}
-              className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"
-            />
-          </div>
-        </div>
+{/* ─── Save Modal ───────────────────────────────────────────────────── */}
+{showSaveModal && (
+  <SaveModal
+    listName={listName}
+    setListName={setListName}
+    saveMessage={saveMessage}
+    setShowSaveModal={setShowSaveModal}
+    setSaveMessage={setSaveMessage}
+    saveCurrentList={saveCurrentList}
+  />
+)}
 
+{/* ─── Load Modal ───────────────────────────────────────────────────── */}
+{showLoadModal && (
+  <LoadModal
+    savedLists={savedLists}
+    loadList={loadList}
+    deleteList={deleteList}
+    setShowLoadModal={setShowLoadModal}
+  />
+)}
         {/* ─── Tabs ────────────────────────────────────────────────────────── */}
         <div className="flex gap-3 mb-8 border-b border-zinc-800 pb-px">
           {[
