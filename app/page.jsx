@@ -1,5 +1,5 @@
-import MovieTracker from "@/components/MovieTracker";
+import MovieTracker from "./components/MovieTracker";
 
-export default function Home() {
+export default function Page() {
   return <MovieTracker />;
 }
