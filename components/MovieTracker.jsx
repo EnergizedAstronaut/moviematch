@@ -941,46 +941,74 @@ async function deleteList(key) {
     <div className="min-h-screen bg-black text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* ─── Header ──────────────────────────────────────────────────────── */}
-        <div className="mb-12">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
-            <div>
-              <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent mb-2">
-                MovieMatch
-              </h1>
-              <p className="text-zinc-400">Discover movies you'll both love</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <button onClick={() => setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
-                <Film className="w-5 h-5" />Save Lists
-              </button>
-              <button onClick={() => { loadSavedLists(); setShowLoadModal(true); }} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
-                <Play className="w-5 h-5" />Load Lists
-              </button>
-              <button
-                onClick={() => { if (compatibilityScore !== null) setShowCompatibilityModal(true); }}
-                disabled={person1Movies.length === 0 || person2Movies.length === 0}
-                className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                title={person1Movies.length === 0 || person2Movies.length === 0 ? "Add movies to both lists first" : "View compatibility"}
-              >
-                <BarChart3 className="w-5 h-5" />{compatibilityScore !== null ? `${compatibilityScore}%` : "Stats"}
-              </button>
-              <button
-                onClick={() => setTogethernessMode(!togethernessMode)}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                  togethernessMode
-                    ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
-                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
-                }`}
-              >
-                <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
-                Togetherness
-                {compatibilityScore !== null && togethernessMode && (
-                  <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{compatibilityScore}%</span>
-                )}
-              </button>
-            </div>
-          </div>
+<div className="mb-12">
+  <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
+    <div>
+      <h1 className="text-5xl font-bold bg-gradient-to-r from-red-500 to-purple-500 bg-clip-text text-transparent mb-2">
+        MovieMatch
+      </h1>
+      <p className="text-zinc-400">Discover movies you'll both love</p>
+    </div>
 
+    <div className="flex flex-wrap gap-3">
+      {/* Save Lists */}
+      <button
+        onClick={() => setShowSaveModal(true)}
+        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+      >
+        <Film className="w-5 h-5" />
+        Save Lists
+      </button>
+
+      {/* Load Lists */}
+      <button
+        onClick={() => {
+          loadSavedLists();
+          setShowLoadModal(true);
+        }}
+        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"
+      >
+        <Play className="w-5 h-5" />
+        Load Lists
+      </button>
+
+      {/* Compatibility Stats */}
+      <button
+        onClick={() => {
+          if (compatibilityScore !== null) setShowCompatibilityModal(true);
+        }}
+        disabled={person1Movies.length === 0 || person2Movies.length === 0}
+        className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+        title={
+          person1Movies.length === 0 || person2Movies.length === 0
+            ? "Add movies to both lists first"
+            : "View compatibility"
+        }
+      >
+        <BarChart3 className="w-5 h-5" />
+        {compatibilityScore !== null ? `${compatibilityScore}%` : "Stats"}
+      </button>
+
+      {/* Togetherness Mode */}
+      <button
+        onClick={() => setTogethernessMode(!togethernessMode)}
+        className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+          togethernessMode
+            ? "bg-gradient-to-r from-pink-600 to-purple-600 text-white shadow-lg shadow-purple-500/50"
+            : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"
+        }`}
+      >
+        <Sparkles className={`w-5 h-5 ${togethernessMode ? "fill-current" : ""}`} />
+        Togetherness
+        {compatibilityScore !== null && togethernessMode && (
+          <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+            {compatibilityScore}%
+          </span>
+        )}
+      </button>
+    </div>
+  </div>
+</div>
           {/* Name Inputs */}
           <div className="grid md:grid-cols-2 gap-4 mb-6">
             <input
