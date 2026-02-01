@@ -1240,7 +1240,7 @@ const SaveModal = ({
         </div>
       )}
 
-      {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+    {/* ─── Modals ──────────────────────────────────────────────────────────── */}
 {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
 {showSaveModal && (
   <SaveModal
@@ -1261,8 +1261,10 @@ const SaveModal = ({
   />
 )}
 {showCompatibilityModal && <CompatibilityModal />}
-      </div> {/* Close inner div */}
-    </div>   {/* Close outer div */}
-  );        {/* Close return */}
-}          {/* Close function */}
+      </div> 
+    </div>   
+  );        
+}         
+
 export default MovieTracker;
+
