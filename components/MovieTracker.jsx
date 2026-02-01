@@ -121,19 +121,28 @@ const MovieTracker = () => {
   }, [person1Movies, person2Movies]);
 
 
-  // ─── Functions ──────────────────────────────────────────
-  const handleSave = () => {
-    saveCurrentList({
-      listName,
-      person1Name,
-      person2Name,
-      person1Movies,
-      person2Movies,
-      setSaveMessage,
-      setShowSaveModal,
-      setListName,
-    });
-  };
+ // ─── HANDLE SAVE ─────────────────────────────────────────────
+const handleSave = () => {
+  if (!listName) {
+    setSaveMessage("Please enter a list name before saving.");
+    return;
+  }
+
+  saveCurrentList({
+    listName,
+    person1Name,
+    person2Name,
+    person1Movies,
+    person2Movies,
+    setSaveMessage,
+    setShowSaveModal,
+    setListName,
+  });
+  setShowSaveModal(false);
+setSaveMessage("Saved successfully!");
+
+};
+
 // ─── hasStorage helpers ──────────────────────────────────────────────────
 const hasLocalStorage =
   typeof window !== "undefined" &&
@@ -1062,8 +1071,6 @@ const SaveModal = ({
 </div>
 
 {/* ─── Save Modal ───────────────────────────────────────────────────── */}
-{/* ─── Save Modal ───────────────────────────────────────────────────── */}
-{/* ─── Save Modal ────────────────────────────────────────── */}
 {showSaveModal && (
   <SaveModal
     listName={listName}
@@ -1071,9 +1078,10 @@ const SaveModal = ({
     saveMessage={saveMessage}
     setShowSaveModal={setShowSaveModal}
     setSaveMessage={setSaveMessage}
-    onSave={handleSave} // ✅ pass the function as prop
+    onSave={handleSave} // This is the correct prop
   />
 )}
+
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
   <LoadModal
