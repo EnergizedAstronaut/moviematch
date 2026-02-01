@@ -382,7 +382,7 @@ const MovieTracker = () => {
           const pages = await Promise.all(
             top.map((g) =>
               fetch(
-                `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${g}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.5`
+                `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${g}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.5&primary_release_date.gte=1990-01-01`
               )
                 .then((r) => r.json())
                 .then((d) => d.results || [])
