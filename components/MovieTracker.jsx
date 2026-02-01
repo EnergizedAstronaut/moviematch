@@ -753,6 +753,13 @@ export default function MovieTracker() {
                 </div>
               )}
         {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+         return (
+  <div className="min-h-screen bg-black text-white">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main content (header, tabs, movie grids, etc.) */}
+      ...
+
+      {/* Modals */}
           <>
             {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
             {showSaveModal && (
@@ -775,5 +782,10 @@ export default function MovieTracker() {
             )}
             {showCompatibilityModal && <CompatibilityModal />}
           </>
+        </div>
+      </div>
+        );
+  }
 
-}
+export default MovieTracker;
+
