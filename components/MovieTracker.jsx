@@ -119,6 +119,21 @@ const MovieTracker = () => {
       setCompatibilityScore(null);
     }
   }, [person1Movies, person2Movies]);
+
+
+  // ─── Functions ──────────────────────────────────────────
+  const handleSave = () => {
+    saveCurrentList({
+      listName,
+      person1Name,
+      person2Name,
+      person1Movies,
+      person2Movies,
+      setSaveMessage,
+      setShowSaveModal,
+      setListName,
+    });
+  };
 // ─── hasStorage helpers ──────────────────────────────────────────────────
 const hasLocalStorage =
   typeof window !== "undefined" &&
@@ -756,13 +771,13 @@ const SaveModal = ({
           </button>
 
           {/* Save List Button */}
-         <button
-  onClick={saveCurrentList} // call directly
+
+ <button
+  onClick={onSave}
   className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
 >
   Save List
 </button>
-
         </div>
       </div>
     </div>
@@ -1047,20 +1062,17 @@ const SaveModal = ({
 </div>
 
 {/* ─── Save Modal ───────────────────────────────────────────────────── */}
-const handleSave = () => {
-  saveCurrentList({
-    listName,
-    person1Name,
-    person2Name,
-    person1Movies,
-    person2Movies,
-    setSaveMessage,
-    setShowSaveModal,
-    setListName,
-  });
-};
-
-
+{/* ─── Save Modal ───────────────────────────────────────────────────── */}
+{/* ─── Save Modal ────────────────────────────────────────── */}
+{showSaveModal && (
+  <SaveModal
+    listName={listName}
+    setListName={setListName}
+    saveMessage={saveMessage}
+    setShowSaveModal={setShowSaveModal}
+    setSaveMessage={setSaveMessage}
+    onSave={handleSave} // ✅ pass the function as prop
+  />
 )}
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
