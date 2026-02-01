@@ -207,19 +207,20 @@ async function saveCurrentList() {
         savedAt: new Date().toISOString(),
       })
     );
+
     setSaveMessage("✅ List saved successfully!");
     setTimeout(() => {
       setShowSaveModal(false);
       setSaveMessage("");
       setListName("");
     }, 1500);
+
     await loadSavedLists();
   } catch (e) {
     console.error("Error saving list:", e);
     setSaveMessage("❌ Error saving list.");
   }
 }
-
 async function loadList(key) {
   if (!hasPersistentStorage) return;
 
@@ -711,50 +712,27 @@ async function deleteList(key) {
   saveMessage,
   setShowSaveModal,
   setSaveMessage,
-  person1Name,
-  person2Name,
-  person1Movies,
-  person2Movies,
   saveCurrentList,
 }) => (
   <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
       <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
-      <p className="text-zinc-400 mb-6">
-        Give your movie lists a name to save them for later
-      </p>
+      <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
 
-      {/* List Name Input */}
       <input
         type="text"
         placeholder="e.g., Movie Night Favorites"
         value={listName}
         onChange={(e) => setListName(e.target.value)}
-        onKeyDown={(e) =>
-          e.key === "Enter" &&
-          saveCurrentList({
-            listName,
-            person1Name,
-            person2Name,
-            person1Movies,
-            person2Movies,
-            setSaveMessage,
-            setShowSaveModal,
-            setListName,
-          })
-        }
+        onKeyDown={(e) => e.key === "Enter" && saveCurrentList()}
         className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
         autoFocus
       />
 
-      {/* Save message */}
-      {saveMessage && (
-        <p className="text-sm mb-4 text-center">{saveMessage}</p>
-      )}
+      {saveMessage && <p className="text-sm mb-4 text-center">{saveMessage}</p>}
 
-      {/* Buttons */}
       <div className="flex gap-3">
-        {/* Cancel Button */}
+        {/* Cancel button */}
         <button
           onClick={() => {
             setShowSaveModal(false);
@@ -766,20 +744,9 @@ async function deleteList(key) {
           Cancel
         </button>
 
-        {/* Save List Button */}
+        {/* Save List button */}
         <button
-          onClick={() =>
-            saveCurrentList({
-              listName,
-              person1Name,
-              person2Name,
-              person1Movies,
-              person2Movies,
-              setSaveMessage,
-              setShowSaveModal,
-              setListName,
-            })
-          }
+          onClick={saveCurrentList} // just call it directly
           className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
         >
           Save List
