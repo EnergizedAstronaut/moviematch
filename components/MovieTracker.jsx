@@ -50,17 +50,6 @@ function countGenres(movies) {
   return counts;
 }
 
-// ─── Persistent storage helper: returns true if window.storage is usable ─────
-async function storageAvailable() {
-  try {
-    // Actually call a method — this is the only reliable check
-    await window.storage.list("__probe__:");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function MovieTracker() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,48 +91,58 @@ export default function MovieTracker() {
   }, [person1Movies, person2Movies]);
 
   // ─── localStorage ────────────────────────────────────────────────────────
+  function getLS() {
+    try { return typeof window !== "undefined" ? window.localStorage : null; } catch(e) { return null; }
+  }
   function loadFromLS() {
+    const ls = getLS(); if (!ls) return;
     try {
-      const p1 = localStorage.getItem("mm_p1"); if (p1) setPerson1Movies(JSON.parse(p1));
-      const p2 = localStorage.getItem("mm_p2"); if (p2) setPerson2Movies(JSON.parse(p2));
-      const n1 = localStorage.getItem("mm_n1"); if (n1) setPerson1Name(n1);
-      const n2 = localStorage.getItem("mm_n2"); if (n2) setPerson2Name(n2);
+      const p1 = ls.getItem("mm_p1"); if (p1) setPerson1Movies(JSON.parse(p1));
+      const p2 = ls.getItem("mm_p2"); if (p2) setPerson2Movies(JSON.parse(p2));
+      const n1 = ls.getItem("mm_n1"); if (n1) setPerson1Name(n1);
+      const n2 = ls.getItem("mm_n2"); if (n2) setPerson2Name(n2);
     } catch (e) {}
   }
-  function saveLS(k, v) { try { localStorage.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); } catch(e){} }
+  function saveLS(k, v) { const ls = getLS(); if (!ls) return; try { ls.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); } catch(e){} }
 
-  // ─── Persistent Storage (window.storage) ─────────────────────────────────
-  async function loadSavedLists() {
+  // ─── Saved Lists (all stored under one localStorage key) ──────────────────
+  const LS_LISTS_KEY = "mm_saved_lists";
+
+  function readAllLists() {
+    const ls = getLS(); if (!ls) return [];
     try {
-      const result = await window.storage.list("movielist:");
-      if (result?.keys) {
-        const lists = [];
-        for (const key of result.keys) {
-          try {
-            const item = await window.storage.get(key);
-            if (item?.value) lists.push({ key, ...JSON.parse(item.value) });
-          } catch (e) {}
-        }
-        setSavedLists(lists);
-      } else {
-        setSavedLists([]);
-      }
-    } catch (e) {
-      setSavedLists([]);
-    }
+      const raw = ls.getItem(LS_LISTS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
   }
 
-  async function saveCurrentList() {
+  function writeAllLists(lists) {
+    const ls = getLS(); if (!ls) return;
+    try { ls.setItem(LS_LISTS_KEY, JSON.stringify(lists)); } catch (e) {}
+  }
+
+  function loadSavedLists() {
+    setSavedLists(readAllLists());
+  }
+
+  function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
     try {
-      const key = `movielist:${listName.toLowerCase().replace(/\s+/g, "-")}`;
-      await window.storage.set(key, JSON.stringify({
-        name: listName, person1Name, person2Name, person1Movies, person2Movies,
+      const key = listName.toLowerCase().replace(/\s+/g, "-");
+      const entry = {
+        key,
+        name: listName,
+        person1Name, person2Name, person1Movies, person2Movies,
         savedAt: new Date().toISOString(),
-      }));
+      };
+      // Overwrite if same key exists, otherwise append
+      const lists = readAllLists();
+      const idx = lists.findIndex(l => l.key === key);
+      if (idx >= 0) lists[idx] = entry; else lists.push(entry);
+      writeAllLists(lists);
+      setSavedLists(lists);
       setSaveMessage("✅ List saved successfully!");
       setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
-      await loadSavedLists();
     } catch (e) {
       console.error("Save error:", e);
       setSaveMessage("❌ Error saving list.");
@@ -155,13 +154,12 @@ export default function MovieTracker() {
     saveCurrentList();
   };
 
-  const handleOpenLoadModal = async () => { await loadSavedLists(); setShowLoadModal(true); };
+  const handleOpenLoadModal = () => { loadSavedLists(); setShowLoadModal(true); };
 
-  async function loadList(key) {
+  function loadList(key) {
     try {
-      const result = await window.storage.get(key);
-      if (result?.value) {
-        const d = JSON.parse(result.value);
+      const d = readAllLists().find(l => l.key === key);
+      if (d) {
         setPerson1Name(d.person1Name); setPerson2Name(d.person2Name);
         setPerson1Movies(d.person1Movies); setPerson2Movies(d.person2Movies);
         saveLS("mm_n1", d.person1Name); saveLS("mm_n2", d.person2Name);
@@ -171,9 +169,13 @@ export default function MovieTracker() {
     } catch (e) { alert("Failed to load list."); }
   }
 
-  async function deleteList(key) {
+  function deleteList(key) {
     if (!confirm("Delete this saved list?")) return;
-    try { await window.storage.delete(key); await loadSavedLists(); } catch (e) {}
+    try {
+      const lists = readAllLists().filter(l => l.key !== key);
+      writeAllLists(lists);
+      setSavedLists(lists);
+    } catch (e) {}
   }
 
   // ─── TMDB ────────────────────────────────────────────────────────────────
