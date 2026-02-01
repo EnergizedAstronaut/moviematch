@@ -1037,6 +1037,20 @@ async function deleteList(key) {
 </div>
 
 {/* ─── Save Modal ───────────────────────────────────────────────────── */}
+const handleSave = () => {
+  saveCurrentList({
+    listName,
+    person1Name,
+    person2Name,
+    person1Movies,
+    person2Movies,
+    setSaveMessage,
+    setShowSaveModal,
+    setListName,
+  });
+};
+
+// Later in JSX
 {showSaveModal && (
   <SaveModal
     listName={listName}
@@ -1044,23 +1058,9 @@ async function deleteList(key) {
     saveMessage={saveMessage}
     setShowSaveModal={setShowSaveModal}
     setSaveMessage={setSaveMessage}
-    saveCurrentList={() =>
-      saveCurrentList({
-        listName,
-        person1Name,
-        person2Name,
-        person1Movies,
-        person2Movies,
-        setSaveMessage,
-        setShowSaveModal,
-        setListName,
-      })
-    }
+    saveCurrentList={handleSave}
   />
 )}
-
-
-
 {/* ─── Load Modal ───────────────────────────────────────────────────── */}
 {showLoadModal && (
   <LoadModal
