@@ -357,55 +357,55 @@ export default function MovieTracker() {
       let results = [];
       
       if (togethernessMode) {
-        // TOGETHERNESS MODE: Only movies that match BOTH users' preferences
+        // ===== TOGETHERNESS MODE: STRICT GENRE MATCHING =====
+        // Requires movies to have MULTIPLE shared genres (AND logic)
+        console.log("TOGETHERNESS MODE - Shared genres:", shared);
+        
         if (shared.length === 0) {
-          // If no shared genres, find popular crowd-pleasers
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=5000&vote_average.gte=7.5&primary_release_date.gte=1985-01-01&page=1`);
+          // No shared genres - get universally loved crowd-pleasers
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=15000&vote_average.gte=7.8&primary_release_date.gte=1990-01-01`);
           results = (await res.json()).results || [];
-        } else {
-          // Get top 3 shared genres and REQUIRE all of them
-          const top3 = shared.slice(0, Math.min(3, shared.length));
+        } else if (shared.length >= 2) {
+          // We have multiple shared genres - fetch movies with genre combos (AND logic)
+          const top3Shared = shared.slice(0, 3);
+          const genrePairs = [];
           
-          // Fetch movies from each shared genre
-          const genrePages = await Promise.all(top3.map(g=>
-            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${g}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=300&vote_average.gte=7.0&primary_release_date.gte=1985-01-01&page=1`)
+          // Create genre pairs (e.g., Action+Comedy, Action+Drama)
+          for (let i = 0; i < top3Shared.length && i < 2; i++) {
+            for (let j = i + 1; j < top3Shared.length && j < 3; j++) {
+              genrePairs.push(`${top3Shared[i]},${top3Shared[j]}`);
+            }
+          }
+          
+          // Fetch movies that have BOTH genres in each pair
+          const genreRequests = genrePairs.map(pair =>
+            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${pair}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=1000&vote_average.gte=7.2&primary_release_date.gte=1990-01-01`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
-          ));
+          );
           
-          const pool = genrePages.flat();
+          const pairResults = await Promise.all(genreRequests);
+          const pool = pairResults.flat();
           
-          // STRICT scoring: Must have multiple shared genres
-          const scored = pool.map(m=>{
-            let s = 0;
+          // Strict scoring - must have 2+ shared genres
+          const scored = pool.map(m => {
             const mg = m.genre_ids || [];
-            
-            // Count how many shared genres this movie has
             const sharedCount = mg.filter(g => shared.includes(String(g))).length;
             
-            // Heavily reward movies with multiple shared genres
-            if (sharedCount >= 3) s += 100;
-            else if (sharedCount >= 2) s += 50;
-            else if (sharedCount >= 1) s += 10;
-            else return null; // Skip movies without shared genres
+            if (sharedCount < 2) return null; // REQUIRE at least 2 shared genres
             
-            // Reward high ratings more
-            s += (m.vote_average || 0) * 8;
+            let score = 0;
+            if (sharedCount >= 3) score += 200;
+            else if (sharedCount >= 2) score += 100;
             
-            // Prefer recent movies
+            score += (m.vote_average || 0) * 12;
+            
             const yr = parseInt((m.release_date || "0").slice(0, 4));
-            if (yr >= 2020) s += 25;
-            else if (yr >= 2015) s += 15;
-            else if (yr >= 2010) s += 8;
+            if (yr >= 2020) score += 40;
+            else if (yr >= 2015) score += 20;
             
-            // Bonus for movies in genres both users have multiple entries in
-            mg.forEach(g => {
-              if ((p1G[g] || 0) >= 3 && (p2G[g] || 0) >= 3) s += 20;
-            });
-            
-            return { ...m, _score: s };
+            return { ...m, _score: score };
           }).filter(m => m !== null);
           
-          // Deduplicate and sort
           const map = new Map();
           scored.forEach(m => {
             if (!map.has(m.id) || map.get(m.id)._score < m._score) {
@@ -413,65 +413,79 @@ export default function MovieTracker() {
             }
           });
           results = [...map.values()].sort((a, b) => b._score - a._score);
+        } else {
+          // Only 1 shared genre - be less strict
+          const mainGenre = shared[0];
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${mainGenre}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=1500&vote_average.gte=7.0&primary_release_date.gte=1990-01-01`);
+          results = (await res.json()).results || [];
         }
+        
       } else {
-        // NORMAL MODE: Broader recommendations, mix of individual preferences
+        // ===== NORMAL MODE: BROAD DISCOVERY =====
+        // Show variety based on popularity and either person's tastes
+        console.log("NORMAL MODE - Broad discovery");
+        
         const allGenres = new Set([...Object.keys(p1G), ...Object.keys(p2G)]);
         const topGenres = [...allGenres]
           .map(g => ({ id: g, count: (p1G[g] || 0) + (p2G[g] || 0) }))
           .sort((a, b) => b.count - a.count)
-          .slice(0, 5);
+          .slice(0, 7); // Get more genres for variety
         
         if (topGenres.length === 0) {
-          // No genres selected, show popular movies
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=1000&vote_average.gte=6.5&primary_release_date.gte=1985-01-01&page=1`);
+          // No preferences - show diverse popular movies
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=3000&vote_average.gte=6.8&primary_release_date.gte=1995-01-01`);
           results = (await res.json()).results || [];
         } else {
-          // Fetch from top genres with OR logic (any of the genres)
+          // Fetch using OR logic - any matching genre
           const genreIds = topGenres.map(g => g.id).join(',');
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreIds}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1985-01-01&page=1`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreIds}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=1995-01-01`);
           const data = await res.json();
           
-          // Score based on variety and individual preferences
+          // Score by popularity + any genre match
           results = (data.results || []).map(m => {
-            let s = (m.vote_average || 0) * 3;
             const mg = m.genre_ids || [];
+            let score = (m.popularity || 0) / 5; // Popularity matters more
+            score += (m.vote_average || 0) * 4;
             
-            // Reward movies that either user would like
+            // Any genre match gets points
             mg.forEach(g => {
-              if (p1G[g]) s += 5;
-              if (p2G[g]) s += 5;
+              if (p1G[g]) score += 10;
+              if (p2G[g]) score += 10;
             });
             
-            return { ...m, _score: s };
+            return { ...m, _score: score };
           }).sort((a, b) => b._score - a._score);
         }
       }
       
-      // Filter out already added movies and apply G/PG filter
+      console.log(`Raw results: ${results.length}`);
+      
+      // Filter out already added movies
       const filtered = results.filter(m => !existingIds.has(m.id));
+      console.log(`After filtering existing: ${filtered.length}`);
       
-      // Only apply G/PG filter to first 30 results to avoid too many API calls
-      const toCheck = filtered.slice(0, 30);
+      // Simplified G/PG filter - only check first 12, if we don't have enough, skip checking the rest
+      const final = [];
+      let checkedCount = 0;
       
-      // Check ratings in batches with a limit
-      let checkedMovies = [];
-      let checkCount = 0;
-      const maxChecks = 20; // Limit API calls
-      
-      for (const movie of toCheck) {
-        if (checkCount >= maxChecks) {
-          // If we've checked enough, just add remaining movies without checking
-          checkedMovies.push({ ...movie, shouldExclude: false });
-        } else {
+      for (const movie of filtered) {
+        if (final.length >= 12) break; // Got enough
+        
+        if (checkedCount < 12) {
+          // Check rating
           const shouldExclude = await shouldExcludeMovie(movie.id);
-          checkedMovies.push({ ...movie, shouldExclude });
-          checkCount++;
+          checkedCount++;
+          if (!shouldExclude) {
+            final.push(movie);
+          }
+        } else {
+          // After checking 12, just include remaining movies
+          final.push(movie);
         }
       }
       
-      const finalFiltered = checkedMovies.filter(m => !m.shouldExclude);
-      setRecommendations(finalFiltered.slice(0, 12));
+      console.log(`Final recommendations: ${final.length}`);
+      setRecommendations(final);
     } catch(e) { 
       console.error("Recommendations error:", e);
       setRecommendations([]); 
