@@ -780,7 +780,11 @@ export default function MovieTracker() {
 )}
 {showCompatibilityModal && <CompatibilityModal />}
 
-      </div>
+     </div>
     </div>
   );
-}
+};
+
+export default MovieTracker;
+export default MovieTracker;
+
