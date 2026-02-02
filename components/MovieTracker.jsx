@@ -744,8 +744,9 @@ const filteredTrendingMovies = filterMatureMovies(trendingMovies);
               <p className="text-zinc-400 mb-6">{togethernessMode?"Smart picks based on your shared genre preferences":"Based on your shared interests and favorite genres"}</p>
               <button onClick={generateRecommendations} className="text-white font-semibold px-6 py-3 rounded-xl transition-all" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
-            {/* Recommendations Grid */}
-{filteredRecommendations.length > 0 ? (
+           {/* Recommendations Section */}
+
+{filteredRecommendations && filteredRecommendations.length > 0 ? (
 
   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
     {filteredRecommendations.map((m) => (
@@ -773,6 +774,7 @@ const filteredTrendingMovies = filterMatureMovies(trendingMovies);
 )}
 
 {/* Modals */}
+
 {selectedMovie && (
   <MovieModal
     movie={selectedMovie}
@@ -801,9 +803,9 @@ const filteredTrendingMovies = filterMatureMovies(trendingMovies);
 )}
 
 {showCompatibilityModal && <CompatibilityModal />}
-
-      </div>
+                  </div>
     </div>
   );
 }
+
 
