@@ -450,13 +450,26 @@ export default function MovieTracker() {
       
       // Filter out already added movies and apply G/PG filter
       const filtered = results.filter(m => !existingIds.has(m.id));
-      const toCheck = filtered.slice(0, 20);
-      const checkedMovies = await Promise.all(
-        toCheck.map(async (m) => ({
-          ...m,
-          shouldExclude: await shouldExcludeMovie(m.id)
-        }))
-      );
+      
+      // Only apply G/PG filter to first 30 results to avoid too many API calls
+      const toCheck = filtered.slice(0, 30);
+      
+      // Check ratings in batches with a limit
+      let checkedMovies = [];
+      let checkCount = 0;
+      const maxChecks = 20; // Limit API calls
+      
+      for (const movie of toCheck) {
+        if (checkCount >= maxChecks) {
+          // If we've checked enough, just add remaining movies without checking
+          checkedMovies.push({ ...movie, shouldExclude: false });
+        } else {
+          const shouldExclude = await shouldExcludeMovie(movie.id);
+          checkedMovies.push({ ...movie, shouldExclude });
+          checkCount++;
+        }
+      }
+      
       const finalFiltered = checkedMovies.filter(m => !m.shouldExclude);
       setRecommendations(finalFiltered.slice(0, 12));
     } catch(e) { 
