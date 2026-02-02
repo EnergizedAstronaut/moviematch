@@ -756,9 +756,7 @@ export default function MovieTracker() {
     <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
   </div>
 )}
-
-        
-        {/* ─── Modals ──────────────────────────────────────────────────────────── */}
+       {/* Modals */}
 {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
 {showSaveModal && (
   <SaveModal
@@ -780,11 +778,10 @@ export default function MovieTracker() {
 )}
 {showCompatibilityModal && <CompatibilityModal />}
 
-     </div>
-    </div>
-  );
-};
+      </div> {/* closes max-w-7xl */}
+    </div> {/* closes min-h-screen */}
+  ); // closes return
+} // closes MovieTracker function
 
-export default MovieTracker;
 export default MovieTracker;
 
