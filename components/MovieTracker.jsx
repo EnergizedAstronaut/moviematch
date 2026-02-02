@@ -91,8 +91,17 @@ export default function MovieTracker() {
   }, [person1Movies, person2Movies]);
 
   // ─── Persistent Storage ──────────────────────────────────────────────────
+  function isStorageAvailable() {
+    return typeof window !== 'undefined' && window.storage;
+  }
+
   async function loadFromStorage() {
-    if (!window.storage) return;
+    if (!isStorageAvailable()) {
+      console.log("Storage not yet available, will retry...");
+      // Retry after a short delay
+      setTimeout(loadFromStorage, 500);
+      return;
+    }
     try {
       const [p1Result, p2Result, n1Result, n2Result] = await Promise.all([
         window.storage.get("mm_p1").catch(() => null),
@@ -110,7 +119,7 @@ export default function MovieTracker() {
   }
 
   async function saveToStorage(k, v) {
-    if (!window.storage) return;
+    if (!isStorageAvailable()) return;
     try {
       await window.storage.set(k, typeof v === "string" ? v : JSON.stringify(v));
     } catch (e) {
@@ -120,7 +129,7 @@ export default function MovieTracker() {
 
   // ─── Saved Lists ─────────────────────────────────────────────────────────
   async function loadSavedLists() {
-    if (!window.storage) return;
+    if (!isStorageAvailable()) return;
     try {
       const result = await window.storage.get("mm_saved_lists").catch(() => null);
       if (result?.value) {
@@ -133,7 +142,17 @@ export default function MovieTracker() {
 
   async function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
-    if (!window.storage) { setSaveMessage("❌ Storage not available"); return; }
+    if (!isStorageAvailable()) { 
+      setSaveMessage("⏳ Storage is loading, please try again in a moment..."); 
+      // Retry after a delay
+      setTimeout(() => {
+        setSaveMessage("");
+        if (isStorageAvailable()) {
+          setSaveMessage("✓ Storage ready! Click Save again.");
+        }
+      }, 1000);
+      return; 
+    }
     try {
       const key = listName.toLowerCase().replace(/\s+/g, "-");
       const entry = {
@@ -157,7 +176,7 @@ export default function MovieTracker() {
       setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
     } catch (e) {
       console.error("Save error:", e);
-      setSaveMessage("❌ Error saving list.");
+      setSaveMessage("❌ Error saving list: " + e.message);
     }
   }
 
@@ -169,7 +188,7 @@ export default function MovieTracker() {
   const handleOpenLoadModal = () => { loadSavedLists(); setShowLoadModal(true); };
 
   async function loadList(key) {
-    if (!window.storage) return;
+    if (!isStorageAvailable()) return;
     try {
       const result = await window.storage.get("mm_saved_lists").catch(() => null);
       if (!result?.value) return;
@@ -195,7 +214,7 @@ export default function MovieTracker() {
 
   async function deleteList(key) {
     if (!confirm("Delete this saved list?")) return;
-    if (!window.storage) return;
+    if (!isStorageAvailable()) return;
     try {
       const result = await window.storage.get("mm_saved_lists").catch(() => null);
       if (!result?.value) return;
@@ -214,8 +233,19 @@ export default function MovieTracker() {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
-      const usRating = data.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "";
-      return usRating === "G" || usRating === "PG";
+      const usRelease = data.results?.find(r => r.iso_3166_1 === 'US');
+      
+      if (!usRelease || !usRelease.release_dates) return false;
+      
+      // Check all release dates for US certifications
+      const certifications = usRelease.release_dates
+        .map(rd => rd.certification)
+        .filter(cert => cert && cert.trim() !== "");
+      
+      // Exclude if ANY certification is G or PG
+      const hasGorPG = certifications.some(cert => cert === "G" || cert === "PG");
+      
+      return hasGorPG;
     } catch(e) {
       return false; // If we can't check, include the movie
     }
@@ -269,25 +299,34 @@ export default function MovieTracker() {
   async function fetchMovieDetails(movieId) {
     setLoading(true);
     try {
-      const [dRes, cRes, rRes, pRes] = await Promise.all([
+      const [dRes, cRes, rRes, pRes, vRes] = await Promise.all([
         fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}&language=en-US`),
       ]);
 
       const details = await dRes.json();
       const credits = await cRes.json();
       const releaseDates = await rRes.json();
       const providers = await pRes.json();
+      const videos = await vRes.json();
 
       const usRating = releaseDates.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "N/A";
+      
+      // Find official trailer (prefer "Official Trailer", then any trailer, then teaser)
+      const trailerVideos = videos.results?.filter(v => v.site === 'YouTube' && v.type === 'Trailer') || [];
+      const teaserVideos = videos.results?.filter(v => v.site === 'YouTube' && v.type === 'Teaser') || [];
+      const officialTrailer = trailerVideos.find(v => v.name.toLowerCase().includes('official'));
+      const trailer = officialTrailer || trailerVideos[0] || teaserVideos[0] || null;
 
       setSelectedMovie({
         ...details,
         cast: credits.cast?.slice(0, 5) || [],
         director: credits.crew?.find(p => p.job === "Director"),
         maturity: usRating,
+        trailer: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
       });
 
       setStreamingProviders(providers.results?.[selectedCountry] || null);
@@ -406,13 +445,13 @@ export default function MovieTracker() {
 
   const MovieCard = ({ movie, onSelect, showActions=false, personNum=null }) => (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
-      <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden" style={{aspectRatio:"2/3"}}>
+      <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{paddingBottom:"150%",position:"relative"}}>
         {movie.poster_path
-          ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
-          : <div className="w-full h-full bg-zinc-800 flex items-center justify-center"><Film className="w-12 h-12 text-zinc-600"/></div>
+          ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
+          : <div className="absolute inset-0 flex items-center justify-center"><Film className="w-12 h-12 text-zinc-600"/></div>
         }
         {movie.vote_average>0 && (
-          <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
+          <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1 z-10">
             <Star className="w-3 h-3 text-yellow-400" fill="#facc15"/>
             <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
           </div>
@@ -493,6 +532,11 @@ export default function MovieTracker() {
                     )}
                   </div>
                   <div className="flex gap-3 mb-6 flex-wrap">
+                    {movie.trailer && (
+                      <a href={movie.trailer} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+                        <Play className="w-5 h-5"/>Watch Trailer
+                      </a>
+                    )}
                     {!isInPerson1(movie.id) && <button onClick={()=>addMovieToPerson(movie,1)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person1Name}</button>}
                     {!isInPerson2(movie.id) && <button onClick={()=>addMovieToPerson(movie,2)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person2Name}</button>}
                   </div>
