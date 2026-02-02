@@ -79,14 +79,28 @@ export default function MovieTracker() {
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
     // Check storage availability
-    const checkStorage = () => {
+    const checkStorage = async () => {
       if (typeof window !== 'undefined' && window.storage) {
-        setStorageReady(true);
-        loadFromStorage();
-        fetchTrending();
-        loadSavedLists();
+        console.log("Storage API found!");
+        
+        // Test storage with a simple write/read
+        try {
+          await window.storage.set("test_key", "test_value");
+          const result = await window.storage.get("test_key");
+          console.log("Storage test successful:", result);
+          await window.storage.delete("test_key");
+          
+          setStorageReady(true);
+          loadFromStorage();
+          fetchTrending();
+          loadSavedLists();
+        } catch (e) {
+          console.error("Storage test failed:", e);
+          setTimeout(checkStorage, 100);
+        }
       } else {
-        // Retry every 100ms for up to 5 seconds
+        console.log("Storage not available yet, retrying...");
+        // Retry every 100ms for up to 10 seconds
         setTimeout(checkStorage, 100);
       }
     };
@@ -147,8 +161,14 @@ export default function MovieTracker() {
   }
 
   async function saveCurrentList() {
+    console.log("saveCurrentList called");
+    console.log("List name:", listName);
+    console.log("Storage ready:", storageReady);
+    console.log("Storage available:", isStorageAvailable());
+    
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
     if (!isStorageAvailable()) { 
+      console.log("Storage not available, setting up retry...");
       setSaveMessage("⏳ Initializing storage..."); 
       // Auto-retry when storage becomes ready
       const checkAndSave = setInterval(() => {
@@ -168,6 +188,7 @@ export default function MovieTracker() {
     }
     
     setSaveMessage("💾 Saving...");
+    console.log("Starting save process...");
     
     try {
       const key = listName.toLowerCase().replace(/\s+/g, "-");
@@ -178,17 +199,29 @@ export default function MovieTracker() {
         savedAt: new Date().toISOString(),
       };
       
+      console.log("Entry to save:", entry);
+      
       // Load existing lists
+      console.log("Loading existing lists...");
       const result = await window.storage.get("mm_saved_lists").catch(() => null);
+      console.log("Existing lists result:", result);
+      
       let lists = result?.value ? JSON.parse(result.value) : [];
+      console.log("Parsed lists:", lists);
       
       // Overwrite if same key exists, otherwise append
       const idx = lists.findIndex(l => l.key === key);
       if (idx >= 0) lists[idx] = entry; else lists.push(entry);
       
-      await window.storage.set("mm_saved_lists", JSON.stringify(lists));
+      console.log("Updated lists:", lists);
+      console.log("Saving to storage...");
+      
+      const saveResult = await window.storage.set("mm_saved_lists", JSON.stringify(lists));
+      console.log("Save result:", saveResult);
+      
       setSavedLists(lists);
       setSaveMessage("✅ List saved successfully!");
+      console.log("Save complete!");
       setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
     } catch (e) {
       console.error("Save error:", e);
