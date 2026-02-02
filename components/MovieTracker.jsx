@@ -299,12 +299,13 @@ export default function MovieTracker() {
   async function fetchMovieDetails(movieId) {
     setLoading(true);
     try {
-      const [dRes, cRes, rRes, pRes, vRes] = await Promise.all([
+      const [dRes, cRes, rRes, pRes, vRes, eRes] = await Promise.all([
         fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}&language=en-US`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/external_ids?api_key=${TMDB_API_KEY}`),
       ]);
 
       const details = await dRes.json();
@@ -312,6 +313,7 @@ export default function MovieTracker() {
       const releaseDates = await rRes.json();
       const providers = await pRes.json();
       const videos = await vRes.json();
+      const externalIds = await eRes.json();
 
       const usRating = releaseDates.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "N/A";
       
@@ -327,6 +329,7 @@ export default function MovieTracker() {
         director: credits.crew?.find(p => p.job === "Director"),
         maturity: usRating,
         trailer: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
+        imdb_id: externalIds.imdb_id || null,
       });
 
       setStreamingProviders(providers.results?.[selectedCountry] || null);
@@ -535,6 +538,11 @@ export default function MovieTracker() {
                     {movie.trailer && (
                       <a href={movie.trailer} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
                         <Play className="w-5 h-5"/>Watch Trailer
+                      </a>
+                    )}
+                    {movie.imdb_id && (
+                      <a href={`https://www.imdb.com/title/${movie.imdb_id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+                        <ExternalLink className="w-5 h-5"/>View on IMDb
                       </a>
                     )}
                     {!isInPerson1(movie.id) && <button onClick={()=>addMovieToPerson(movie,1)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person1Name}</button>}
