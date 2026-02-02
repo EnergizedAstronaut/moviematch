@@ -529,122 +529,261 @@ export default function MovieTracker() {
     </div>
   );
 
-  // --- MovieModal ----------------------------------------------------------
-  const MovieModal = ({ movie, onClose }) => {
-    if (!movie) return null;
-    const cur = COUNTRIES.find(c=>c.code===selectedCountry)||COUNTRIES[0];
-    const { flatrate, rent, buy, link: jwLink } = streamingProviders||{};
-    const ProviderRow = ({ label, providers }) => {
-      if (!providers?.length) return null;
-      return (
-        <div className="mb-4">
-          <p className="text-sm font-medium text-zinc-400 mb-3">{label}</p>
-          <div className="flex flex-wrap gap-3">
-            {providers.slice(0,5).map(p=>(
-              <a key={p.provider_id} href={jwLink||"#"} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-1">
-                <img src={`https://image.tmdb.org/t/p/original${p.logo_path}`} alt={p.provider_name} className="w-14 h-14 rounded-lg border border-zinc-600"/>
-                <span className="text-xs text-zinc-400 text-center" style={{maxWidth:60}}>{p.provider_name}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      );
-    };
+  // --- MovieModal (Polished Modern-style layout) ---------------------------
+const MovieModal = ({ movie, onClose }) => {
+  if (!movie) return null;
+
+  const cur = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0];
+  const { flatrate, rent, buy, link: jwLink } = streamingProviders || {};
+
+  const ProviderRow = ({ label, providers }) => {
+    if (!providers?.length) return null;
     return (
-      <div className="fixed inset-0 bg-black/90 z-50 overflow-y-auto" style={{backdropFilter:"blur(4px)"}}>
-        <div className="min-h-screen px-4 py-8 flex items-center justify-center">
-          <div className="max-w-4xl w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800">
-            <div className="relative">
-              {movie.backdrop_path && (
-                <div className="relative h-80">
-                  <img src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`} alt={movie.title} className="w-full h-full object-cover"/>
-                  <div className="absolute inset-0" style={{background:"linear-gradient(to top, #18181b, rgba(24,24,27,0.4) 50%, transparent)"}}/>
-                </div>
-              )}
-              <button onClick={onClose} className="absolute top-4 right-4 bg-black/50 rounded-full p-2 hover:bg-black/70 transition-colors">
-                <X className="w-5 h-5 text-white"/>
-              </button>
-            </div>
-            <div className="p-8 -mt-24 relative z-10">
-              <div className="flex gap-6 mb-6 flex-wrap">
-                {movie.poster_path && (
-                  <div className="w-40 flex-shrink-0">
-                    <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full rounded-xl shadow-2xl border border-zinc-800" style={{aspectRatio:"2/3",objectFit:"cover"}}/>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-3xl font-bold text-white mb-2">{movie.title}</h2>
-                  {movie.tagline && <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>}
-                  <div className="flex items-center gap-4 mb-4 flex-wrap">
-                    {movie.vote_average>0 && (
-                      <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold">
-                        <Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}
-                      </div>
-                    )}
-                    <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
-                    {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
-                    {movie.maturity && movie.maturity !== "N/A" && (
-                      <span className="text-zinc-400 font-medium border border-zinc-600 px-2 py-0.5 rounded">
-                        {movie.maturity}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-3 mb-6 flex-wrap">
-                    {movie.trailer && (
-                      <a href={movie.trailer} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
-                        <Play className="w-5 h-5"/>Watch Trailer
-                      </a>
-                    )}
-                    {movie.imdb_id && (
-                      <a href={`https://www.imdb.com/title/${movie.imdb_id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
-                        <ExternalLink className="w-5 h-5"/>View on IMDb
-                      </a>
-                    )}
-                    {!isInPerson1(movie.id) && <button onClick={()=>addMovieToPerson(movie,1)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person1Name}</button>}
-                    {!isInPerson2(movie.id) && <button onClick={()=>addMovieToPerson(movie,2)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person2Name}</button>}
-                  </div>
-                  <p className="text-zinc-300 leading-relaxed mb-6">{movie.overview}</p>
-                  {movie.genres?.length>0 && (
-                    <div className="mb-6 flex flex-wrap gap-2">
-                      {movie.genres.map(g=><span key={g.id} className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm">{g.name}</span>)}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Where to Watch */}
-              <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2"><Play className="w-5 h-5 text-red-500"/>Where to Watch</h3>
-                  <button onClick={()=>setShowCountrySelector(!showCountrySelector)} className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg text-sm text-white transition-colors">
-                    <Globe className="w-4 h-4"/>{cur.flag} {cur.code}
-                  </button>
-                </div>
-                {showCountrySelector && (
-                  <div className="mb-4 bg-zinc-900 rounded-lg p-3 border border-zinc-700">
-                    <p className="text-xs text-zinc-400 mb-2">Select your region:</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {COUNTRIES.map(c=>(
-                        <button key={c.code} onClick={()=>{setSelectedCountry(c.code);setShowCountrySelector(false);fetchMovieDetails(movie.id);}}
-                          className={`px-3 py-2 rounded-lg text-sm transition-colors ${selectedCountry===c.code?"bg-purple-600 text-white":"bg-zinc-800 text-zinc-300 hover:bg-zinc-700"}`}>
-                          {c.flag} {c.code}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <ProviderRow label="Stream" providers={flatrate}/>
-                <ProviderRow label="Rent" providers={rent}/>
-                <ProviderRow label="Buy" providers={buy}/>
-                {!flatrate&&!rent&&!buy && <p className="text-zinc-400 text-sm">No streaming options available in {cur.name}</p>}
-                {jwLink && <a href={jwLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors">View all options on JustWatch <ExternalLink className="w-4 h-4"/></a>}
-                <p className="text-xs text-zinc-600 mt-4">Streaming data provided by JustWatch • {cur.name}</p>
-              </div>
-            </div>
-          </div>
+      <div className="mb-5">
+        <p className="text-sm font-medium text-zinc-400 mb-3">{label}</p>
+        <div className="flex flex-wrap gap-3">
+          {providers.slice(0, 6).map(p => (
+            <a
+              key={p.provider_id}
+              href={jwLink || "#"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-col items-center gap-1 group"
+            >
+              <img
+                src={`https://image.tmdb.org/t/p/original${p.logo_path}`}
+                alt={p.provider_name}
+                className="w-14 h-14 rounded-lg border border-zinc-600 group-hover:scale-105 transition"
+              />
+              <span className="text-xs text-zinc-400 text-center max-w-[60px] leading-tight">
+                {p.provider_name}
+              </span>
+            </a>
+          ))}
         </div>
       </div>
     );
   };
+
+  const maturityColor = movie.maturity === "R"
+    ? "border-red-500/60 text-red-400"
+    : movie.maturity === "PG-13"
+    ? "border-orange-500/60 text-orange-400"
+    : "border-zinc-600 text-zinc-300";
+
+  return (
+    <div className="fixed inset-0 bg-black/90 z-50 overflow-y-auto backdrop-blur-sm">
+      <div className="min-h-screen px-3 md:px-6 py-8 flex items-center justify-center">
+        <div className="max-w-5xl w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl">
+
+          {/* Backdrop */}
+          <div className="relative">
+            {movie.backdrop_path && (
+              <div className="relative h-72 md:h-[420px]">
+                <img
+                  src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
+                  alt={movie.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
+              </div>
+            )}
+
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 bg-black/60 rounded-full p-2 hover:bg-black/80 transition"
+            >
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+
+          {/* Content */}
+          <div className="relative z-10 px-5 md:px-8 pb-8 -mt-12 md:-mt-20">
+            <div className="flex flex-col md:flex-row gap-6">
+
+              {/* Poster */}
+              {movie.poster_path && (
+                <div className="w-32 md:w-44 flex-shrink-0 mx-auto md:mx-0">
+                  <img
+                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                    alt={movie.title}
+                    className="w-full rounded-xl shadow-xl border border-zinc-800"
+                    style={{ aspectRatio: "2/3", objectFit: "cover" }}
+                  />
+                </div>
+              )}
+
+              {/* Main Info */}
+              <div className="flex-1 min-w-0 text-center md:text-left">
+                <h2 className="text-2xl md:text-4xl font-bold text-white mb-2 leading-tight">
+                  {movie.title}
+                </h2>
+
+                {movie.tagline && (
+                  <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>
+                )}
+
+                {/* Rating Row */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-5">
+                  {movie.vote_average > 0 && (
+                    <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold">
+                      <Star className="w-4 h-4" fill="currentColor" />
+                      {movie.vote_average.toFixed(1)}
+                    </div>
+                  )}
+
+                  <span className="text-zinc-400">
+                    {movie.release_date?.split("-")[0]}
+                  </span>
+
+                  {movie.runtime && (
+                    <span className="text-zinc-400">
+                      {movie.runtime} min
+                    </span>
+                  )}
+
+                  {movie.maturity && movie.maturity !== "N/A" && (
+                    <span className={`text-xs font-semibold border px-2 py-0.5 rounded ${maturityColor}`}>
+                      {movie.maturity}
+                    </span>
+                  )}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3 justify-center md:justify-start mb-6">
+                  {movie.trailer && (
+                    <a
+                      href={movie.trailer}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
+                    >
+                      <Play className="w-5 h-5" /> Watch Trailer
+                    </a>
+                  )}
+
+                  {movie.imdb_id && (
+                    <a
+                      href={`https://www.imdb.com/title/${movie.imdb_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
+                    >
+                      <ExternalLink className="w-5 h-5" /> IMDb
+                    </a>
+                  )}
+
+                  {!isInPerson1(movie.id) && (
+                    <button
+                      onClick={() => addMovieToPerson(movie, 1)}
+                      className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
+                    >
+                      + {person1Name}
+                    </button>
+                  )}
+
+                  {!isInPerson2(movie.id) && (
+                    <button
+                      onClick={() => addMovieToPerson(movie, 2)}
+                      className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
+                    >
+                      + {person2Name}
+                    </button>
+                  )}
+                </div>
+
+                {/* Overview */}
+                <p className="text-zinc-300 leading-relaxed mb-6 max-w-3xl">
+                  {movie.overview}
+                </p>
+
+                {/* Genres */}
+                {movie.genres?.length > 0 && (
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-6">
+                    {movie.genres.map(g => (
+                      <span
+                        key={g.id}
+                        className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm"
+                      >
+                        {g.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Where to Watch */}
+            <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700 mt-4">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Play className="w-5 h-5 text-red-500" /> Where to Watch
+                </h3>
+
+                <button
+                  onClick={() => setShowCountrySelector(!showCountrySelector)}
+                  className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg text-sm text-white transition"
+                >
+                  <Globe className="w-4 h-4" /> {cur.flag} {cur.code}
+                </button>
+              </div>
+
+              {showCountrySelector && (
+                <div className="mb-4 bg-zinc-900 rounded-lg p-3 border border-zinc-700">
+                  <p className="text-xs text-zinc-400 mb-2">Select your region:</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {COUNTRIES.map(c => (
+                      <button
+                        key={c.code}
+                        onClick={() => {
+                          setSelectedCountry(c.code);
+                          setShowCountrySelector(false);
+                          fetchMovieDetails(movie.id);
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm transition ${
+                          selectedCountry === c.code
+                            ? "bg-purple-600 text-white"
+                            : "bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
+                        }`}
+                      >
+                        {c.flag} {c.code}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <ProviderRow label="Stream" providers={flatrate} />
+              <ProviderRow label="Rent" providers={rent} />
+              <ProviderRow label="Buy" providers={buy} />
+
+              {!flatrate && !rent && !buy && (
+                <p className="text-zinc-400 text-sm">
+                  No streaming options available in {cur.name}
+                </p>
+              )}
+
+              {jwLink && (
+                <a
+                  href={jwLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition"
+                >
+                  View all options on JustWatch <ExternalLink className="w-4 h-4" />
+                </a>
+              )}
+
+              <p className="text-xs text-zinc-600 mt-4">
+                Streaming data provided by JustWatch • {cur.name}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
   // --- SaveModal -----------------------------------------------------------
   const SaveModal = () => (
