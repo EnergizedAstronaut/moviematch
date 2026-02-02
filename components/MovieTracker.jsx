@@ -179,6 +179,7 @@ export default function MovieTracker() {
   }
 
   // ─── TMDB ────────────────────────────────────────────────────────────────
+  
   async function fetchTrending() {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
@@ -187,17 +188,37 @@ export default function MovieTracker() {
     } catch(e) {}
   }
 
-  async function searchMovies(query) {
-    if (!query.trim()) { setSearchResults([]); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&primary_release_date.gte=1985-01-01`);
-      const data = await res.json();
-      setSearchResults(data.results || []);
-    } catch(e) {}
-    setLoading(false);
-  }
-
+// Search Movies (exclude G and PG)
+async function searchMovies(query) {
+  if (!query.trim()) { setSearchResults([]); return; }
+  setLoading(true);
+  try {
+    const res = await fetch(
+      `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}` +
+      `&query=${encodeURIComponent(query)}` +
+      `&language=en-US` +
+      `&primary_release_date.gte=1985-01-01` +
+      `&include_adult=false` +           // optional: still exclude explicit adult
+      `&certification_country=US` +
+      `&certification.gte=PG-13`         // this removes G and PG
+    );
+    const data = await res.json();
+    setSearchResults(data.results || []);
+  } catch(e) {}
+  setLoading(false);
+}
+// Recommendations (togetherness mode, exclude G/PG)
+const res = await fetch(
+  `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}` +
+  `&with_genres=${top.slice(0,2).join(",")}` +
+  `&with_original_language=en` +
+  `&sort_by=vote_average.desc` +
+  `&vote_count.gte=500` +
+  `&vote_average.gte=6.5` +
+  `&primary_release_date.gte=1985-01-01` +
+  `&certification_country=US` +
+  `&certification.gte=PG-13`
+);
   async function fetchMovieDetails(movieId) {
     setLoading(true);
     try {
