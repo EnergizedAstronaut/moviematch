@@ -74,6 +74,7 @@ export default function MovieTracker() {
   const [saveMessage, setSaveMessage] = useState("");
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
@@ -132,6 +133,54 @@ export default function MovieTracker() {
   function deleteList(key) {
     if (!confirm("Delete this saved list?")) return;
     setSavedLists(savedLists.filter(l => l.key !== key));
+  }
+
+  // ─── Export/Import ───────────────────────────────────────────────────────
+  function exportData() {
+    const data = {
+      person1Name,
+      person2Name,
+      person1Movies,
+      person2Movies,
+      savedLists,
+      exportedAt: new Date().toISOString(),
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `moviematch-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowExportModal(false);
+  }
+
+  function handleImport(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result);
+        
+        if (data.person1Name) setPerson1Name(data.person1Name);
+        if (data.person2Name) setPerson2Name(data.person2Name);
+        if (data.person1Movies) setPerson1Movies(data.person1Movies);
+        if (data.person2Movies) setPerson2Movies(data.person2Movies);
+        if (data.savedLists) setSavedLists(data.savedLists);
+        
+        alert('✅ Data imported successfully!');
+        setActiveTab('compare');
+      } catch (err) {
+        alert('❌ Error importing file. Please make sure it\'s a valid MovieMatch export file.');
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
   }
 
   // ─── TMDB ────────────────────────────────────────────────────────────────
@@ -625,6 +674,32 @@ export default function MovieTracker() {
     );
   };
 
+  // ─── ExportModal ─────────────────────────────────────────────────────────
+  const ExportModal = () => (
+    <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
+      <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
+        <h2 className="text-2xl font-bold mb-2 text-white">Export Your Data</h2>
+        <p className="text-zinc-400 mb-6">Download all your movie lists as a file. You can import this file later to restore your data.</p>
+        
+        <div className="bg-zinc-800/50 rounded-lg p-4 mb-6 border border-zinc-700">
+          <h3 className="text-white font-semibold mb-2">What will be exported:</h3>
+          <ul className="text-zinc-300 text-sm space-y-1">
+            <li>• {person1Name}'s list ({person1Movies.length} movies)</li>
+            <li>• {person2Name}'s list ({person2Movies.length} movies)</li>
+            <li>• All saved lists ({savedLists.length})</li>
+          </ul>
+        </div>
+
+        <div className="flex gap-3">
+          <button onClick={()=>setShowExportModal(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Cancel</button>
+          <button onClick={exportData} className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+            <ExternalLink className="w-5 h-5"/>Download File
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   // ═══════════════════════════════════════════════════════════════════════════
   // MAIN RENDER
   // ═══════════════════════════════════════════════════════════════════════════
@@ -639,6 +714,13 @@ export default function MovieTracker() {
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <label className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 cursor-pointer">
+                <Plus className="w-5 h-5"/> Import
+                <input type="file" accept=".json" onChange={handleImport} className="hidden"/>
+              </label>
+              <button onClick={()=>setShowExportModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
+                <ExternalLink className="w-5 h-5"/> Export
+              </button>
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
                 <Film className="w-5 h-5"/> Save Lists
               </button>
@@ -789,6 +871,7 @@ export default function MovieTracker() {
         {showSaveModal && <SaveModal/>}
         {showLoadModal && <LoadModal/>}
         {showCompatibilityModal && <CompatibilityModal/>}
+        {showExportModal && <ExportModal/>}
       </div>
     </div>
   );
