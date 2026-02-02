@@ -553,7 +553,11 @@ export default function MovieTracker() {
             </div>
             <div className="p-8 -mt-24 relative z-10">
               <div className="flex gap-6 mb-6 flex-wrap">
-                {movie.poster_path && <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-40 rounded-xl shadow-2xl flex-shrink-0 border border-zinc-800"/>}
+                {movie.poster_path && (
+                  <div className="w-40 flex-shrink-0">
+                    <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full rounded-xl shadow-2xl border border-zinc-800" style={{aspectRatio:"2/3",objectFit:"cover"}}/>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-3xl font-bold text-white mb-2">{movie.title}</h2>
                   {movie.tagline && <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>}
