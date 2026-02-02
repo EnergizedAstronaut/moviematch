@@ -345,9 +345,11 @@ export default function MovieTracker() {
     return { score, sharedGenres, insights };
   }
 // --- Recommendations -----------------------------------------------------
+// --- Recommendations -----------------------------------------------------
 async function generateRecommendations() {
   setLoading(true);
 
+  // Count genres for both persons
   const p1G = Object.fromEntries(
     Object.entries(countGenres(person1Movies)).map(([k, v]) => [Number(k), v])
   );
@@ -362,13 +364,17 @@ async function generateRecommendations() {
 
   const existingIds = new Set([...person1Movies, ...person2Movies].map(m => m.id));
 
+  // Movies to exclude by title (case insensitive)
+  const blockedTitles = [
+    "gabriel's inferno",
+    "¿quieres ser mi... hijo?"
+  ].map(t => t.toLowerCase());
+
   try {
     let results = [];
 
     // ----- TOGETHERNESS MODE -----
     if (togethernessMode && shared.length > 0) {
-      console.log("TOGETHERNESS MODE - Shared genres:", shared);
-
       const top3Shared = shared.slice(0, 3);
       const genrePairs = [];
 
@@ -404,8 +410,7 @@ async function generateRecommendations() {
       });
     }
 
-    // ----- NORMAL MODE -----
-    // Always run normal mode fetch
+    // ----- NORMAL / "FOR YOU" MODE -----
     const allGenres = new Set([...Object.keys(p1G), ...Object.keys(p2G)]);
     const topGenres = [...allGenres]
       .map(g => ({ id: Number(g), count: (p1G[g] || 0) + (p2G[g] || 0) }))
@@ -425,32 +430,32 @@ async function generateRecommendations() {
       return { ...m, _score: score };
     });
 
-    // Combine results from togetherness and normal mode
+    // Combine both togetherness and normal results
     results = [...results, ...normalResults];
 
-    // ----- Deduplicate by movie ID -----
+    // ----- Deduplicate & filter -----
     const map = new Map();
     results.forEach(m => {
-      if (!map.has(m.id) || map.get(m.id)._score < m._score) {
+      const titleLower = (m.title || "").toLowerCase();
+
+      if (
+        !map.has(m.id) &&                    // not duplicate ID
+        !existingIds.has(m.id) &&           // not already added
+        !blockedTitles.includes(titleLower) && // not blocked title
+        m.original_language === "en"        // only English
+      ) {
         map.set(m.id, m);
       }
     });
+
     results = [...map.values()].sort((a, b) => b._score - a._score);
 
-    // Filter out already added movies
-    const filtered = results.filter(m => !existingIds.has(m.id));
-
-    // Final recommendations (up to 12)
+    // ----- Final 12 recommendations -----
     const final = [];
-    for (const movie of filtered) {
+    for (const movie of results) {
       if (final.length >= 12) break;
-      const shouldExclude = await shouldExcludeMovie(movie.id); // optional
+      const shouldExclude = await shouldExcludeMovie(movie.id);
       if (!shouldExclude) final.push(movie);
-    }
-
-    // Fallback: if empty, just take top results
-    if (final.length === 0 && results.length > 0) {
-      final.push(...results.slice(0, 12));
     }
 
     setRecommendations(final);
@@ -464,12 +469,13 @@ async function generateRecommendations() {
   setLoading(false);
 }
 
-// ----- Auto-run on list changes -----
+// ----- Auto-run when movies or mode changes -----
 useEffect(() => {
   if (person1Movies.length > 0 || person2Movies.length > 0) {
     generateRecommendations();
   }
 }, [person1Movies, person2Movies, togethernessMode]);
+
 
 
   // ===========================================================================
