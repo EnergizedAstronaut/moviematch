@@ -74,12 +74,23 @@ export default function MovieTracker() {
   const [saveMessage, setSaveMessage] = useState("");
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
+  const [storageReady, setStorageReady] = useState(false);
 
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
-    loadFromStorage();
-    fetchTrending();
-    loadSavedLists();
+    // Check storage availability
+    const checkStorage = () => {
+      if (typeof window !== 'undefined' && window.storage) {
+        setStorageReady(true);
+        loadFromStorage();
+        fetchTrending();
+        loadSavedLists();
+      } else {
+        // Retry every 100ms for up to 5 seconds
+        setTimeout(checkStorage, 100);
+      }
+    };
+    checkStorage();
   }, []);
 
   useEffect(() => {
@@ -92,16 +103,11 @@ export default function MovieTracker() {
 
   // ─── Persistent Storage ──────────────────────────────────────────────────
   function isStorageAvailable() {
-    return typeof window !== 'undefined' && window.storage;
+    return storageReady && typeof window !== 'undefined' && window.storage;
   }
 
   async function loadFromStorage() {
-    if (!isStorageAvailable()) {
-      console.log("Storage not yet available, will retry...");
-      // Retry after a short delay
-      setTimeout(loadFromStorage, 500);
-      return;
-    }
+    if (!isStorageAvailable()) return;
     try {
       const [p1Result, p2Result, n1Result, n2Result] = await Promise.all([
         window.storage.get("mm_p1").catch(() => null),
@@ -143,16 +149,26 @@ export default function MovieTracker() {
   async function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
     if (!isStorageAvailable()) { 
-      setSaveMessage("⏳ Storage is loading, please try again in a moment..."); 
-      // Retry after a delay
-      setTimeout(() => {
-        setSaveMessage("");
+      setSaveMessage("⏳ Initializing storage..."); 
+      // Auto-retry when storage becomes ready
+      const checkAndSave = setInterval(() => {
         if (isStorageAvailable()) {
-          setSaveMessage("✓ Storage ready! Click Save again.");
+          clearInterval(checkAndSave);
+          saveCurrentList();
         }
-      }, 1000);
+      }, 200);
+      // Stop trying after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkAndSave);
+        if (!isStorageAvailable()) {
+          setSaveMessage("❌ Storage failed to initialize. Please refresh the page.");
+        }
+      }, 5000);
       return; 
     }
+    
+    setSaveMessage("💾 Saving...");
+    
     try {
       const key = listName.toLowerCase().replace(/\s+/g, "-");
       const entry = {
@@ -176,7 +192,7 @@ export default function MovieTracker() {
       setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
     } catch (e) {
       console.error("Save error:", e);
-      setSaveMessage("❌ Error saving list: " + e.message);
+      setSaveMessage("❌ Error saving: " + e.message);
     }
   }
 
@@ -731,6 +747,12 @@ export default function MovieTracker() {
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
             <div className="flex flex-wrap gap-3">
+              {!storageReady && (
+                <div className="px-4 py-2 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-sm flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"/>
+                  <span>Initializing storage...</span>
+                </div>
+              )}
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
                 <Film className="w-5 h-5"/> Save Lists
               </button>
