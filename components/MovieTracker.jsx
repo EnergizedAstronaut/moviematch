@@ -77,7 +77,7 @@ export default function MovieTracker() {
 
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
-    loadFromLS();
+    loadFromStorage();
     fetchTrending();
     loadSavedLists();
   }, []);
@@ -90,43 +90,50 @@ export default function MovieTracker() {
     }
   }, [person1Movies, person2Movies]);
 
-  // ─── localStorage ────────────────────────────────────────────────────────
-  function getLS() {
-    try { return typeof window !== "undefined" ? window.localStorage : null; } catch(e) { return null; }
-  }
-  function loadFromLS() {
-    const ls = getLS(); if (!ls) return;
+  // ─── Persistent Storage ──────────────────────────────────────────────────
+  async function loadFromStorage() {
+    if (!window.storage) return;
     try {
-      const p1 = ls.getItem("mm_p1"); if (p1) setPerson1Movies(JSON.parse(p1));
-      const p2 = ls.getItem("mm_p2"); if (p2) setPerson2Movies(JSON.parse(p2));
-      const n1 = ls.getItem("mm_n1"); if (n1) setPerson1Name(n1);
-      const n2 = ls.getItem("mm_n2"); if (n2) setPerson2Name(n2);
-    } catch (e) {}
+      const [p1Result, p2Result, n1Result, n2Result] = await Promise.all([
+        window.storage.get("mm_p1").catch(() => null),
+        window.storage.get("mm_p2").catch(() => null),
+        window.storage.get("mm_n1").catch(() => null),
+        window.storage.get("mm_n2").catch(() => null),
+      ]);
+      if (p1Result?.value) setPerson1Movies(JSON.parse(p1Result.value));
+      if (p2Result?.value) setPerson2Movies(JSON.parse(p2Result.value));
+      if (n1Result?.value) setPerson1Name(n1Result.value);
+      if (n2Result?.value) setPerson2Name(n2Result.value);
+    } catch (e) {
+      console.error("Load error:", e);
+    }
   }
-  function saveLS(k, v) { const ls = getLS(); if (!ls) return; try { ls.setItem(k, typeof v === "string" ? v : JSON.stringify(v)); } catch(e){} }
 
-  // ─── Saved Lists (all stored under one localStorage key) ──────────────────
-  const LS_LISTS_KEY = "mm_saved_lists";
-
-  function readAllLists() {
-    const ls = getLS(); if (!ls) return [];
+  async function saveToStorage(k, v) {
+    if (!window.storage) return;
     try {
-      const raw = ls.getItem(LS_LISTS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) { return []; }
+      await window.storage.set(k, typeof v === "string" ? v : JSON.stringify(v));
+    } catch (e) {
+      console.error("Save error:", e);
+    }
   }
 
-  function writeAllLists(lists) {
-    const ls = getLS(); if (!ls) return;
-    try { ls.setItem(LS_LISTS_KEY, JSON.stringify(lists)); } catch (e) {}
+  // ─── Saved Lists ─────────────────────────────────────────────────────────
+  async function loadSavedLists() {
+    if (!window.storage) return;
+    try {
+      const result = await window.storage.get("mm_saved_lists").catch(() => null);
+      if (result?.value) {
+        setSavedLists(JSON.parse(result.value));
+      }
+    } catch (e) {
+      console.error("Load lists error:", e);
+    }
   }
 
-  function loadSavedLists() {
-    setSavedLists(readAllLists());
-  }
-
-  function saveCurrentList() {
+  async function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
+    if (!window.storage) { setSaveMessage("❌ Storage not available"); return; }
     try {
       const key = listName.toLowerCase().replace(/\s+/g, "-");
       const entry = {
@@ -135,11 +142,16 @@ export default function MovieTracker() {
         person1Name, person2Name, person1Movies, person2Movies,
         savedAt: new Date().toISOString(),
       };
+      
+      // Load existing lists
+      const result = await window.storage.get("mm_saved_lists").catch(() => null);
+      let lists = result?.value ? JSON.parse(result.value) : [];
+      
       // Overwrite if same key exists, otherwise append
-      const lists = readAllLists();
       const idx = lists.findIndex(l => l.key === key);
       if (idx >= 0) lists[idx] = entry; else lists.push(entry);
-      writeAllLists(lists);
+      
+      await window.storage.set("mm_saved_lists", JSON.stringify(lists));
       setSavedLists(lists);
       setSaveMessage("✅ List saved successfully!");
       setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
@@ -156,34 +168,79 @@ export default function MovieTracker() {
 
   const handleOpenLoadModal = () => { loadSavedLists(); setShowLoadModal(true); };
 
-  function loadList(key) {
+  async function loadList(key) {
+    if (!window.storage) return;
     try {
-      const d = readAllLists().find(l => l.key === key);
+      const result = await window.storage.get("mm_saved_lists").catch(() => null);
+      if (!result?.value) return;
+      
+      const lists = JSON.parse(result.value);
+      const d = lists.find(l => l.key === key);
       if (d) {
         setPerson1Name(d.person1Name); setPerson2Name(d.person2Name);
         setPerson1Movies(d.person1Movies); setPerson2Movies(d.person2Movies);
-        saveLS("mm_n1", d.person1Name); saveLS("mm_n2", d.person2Name);
-        saveLS("mm_p1", d.person1Movies); saveLS("mm_p2", d.person2Movies);
+        await Promise.all([
+          saveToStorage("mm_n1", d.person1Name),
+          saveToStorage("mm_n2", d.person2Name),
+          saveToStorage("mm_p1", d.person1Movies),
+          saveToStorage("mm_p2", d.person2Movies),
+        ]);
         setShowLoadModal(false); setActiveTab("compare");
       }
-    } catch (e) { alert("Failed to load list."); }
+    } catch (e) { 
+      console.error("Load error:", e);
+      alert("Failed to load list."); 
+    }
   }
 
-  function deleteList(key) {
+  async function deleteList(key) {
     if (!confirm("Delete this saved list?")) return;
+    if (!window.storage) return;
     try {
-      const lists = readAllLists().filter(l => l.key !== key);
-      writeAllLists(lists);
+      const result = await window.storage.get("mm_saved_lists").catch(() => null);
+      if (!result?.value) return;
+      
+      const lists = JSON.parse(result.value).filter(l => l.key !== key);
+      await window.storage.set("mm_saved_lists", JSON.stringify(lists));
       setSavedLists(lists);
-    } catch (e) {}
+    } catch (e) {
+      console.error("Delete error:", e);
+    }
   }
 
   // ─── TMDB ────────────────────────────────────────────────────────────────
+  // Helper to check if a movie should be excluded based on rating
+  async function shouldExcludeMovie(movieId) {
+    try {
+      const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`);
+      const data = await res.json();
+      const usRating = data.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "";
+      return usRating === "G" || usRating === "PG";
+    } catch(e) {
+      return false; // If we can't check, include the movie
+    }
+  }
+
   async function fetchTrending() {
     try {
-      const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}&primary_release_date.gte=1985-01-01`);
+      const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
-      setTrendingMovies(data.results?.slice(0, 12) || []);
+      // Filter for movies from 1985 onwards
+      const filtered = (data.results || []).filter(m => {
+        const year = parseInt((m.release_date || "0").slice(0, 4));
+        return year >= 1985;
+      });
+      
+      // Filter out G and PG rated movies (check first 20 to avoid too many API calls)
+      const toCheck = filtered.slice(0, 20);
+      const checkedMovies = await Promise.all(
+        toCheck.map(async (m) => ({
+          ...m,
+          shouldExclude: await shouldExcludeMovie(m.id)
+        }))
+      );
+      const finalFiltered = checkedMovies.filter(m => !m.shouldExclude);
+      setTrendingMovies(finalFiltered.slice(0, 12));
     } catch(e) {}
   }
 
@@ -193,57 +250,65 @@ export default function MovieTracker() {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US&primary_release_date.gte=1985-01-01`);
       const data = await res.json();
-      setSearchResults(data.results || []);
+      
+      // Filter out G and PG rated movies (check first 20 to avoid too many API calls)
+      const results = data.results || [];
+      const toCheck = results.slice(0, 20);
+      const checkedMovies = await Promise.all(
+        toCheck.map(async (m) => ({
+          ...m,
+          shouldExclude: await shouldExcludeMovie(m.id)
+        }))
+      );
+      const finalFiltered = checkedMovies.filter(m => !m.shouldExclude);
+      setSearchResults(finalFiltered);
     } catch(e) {}
     setLoading(false);
   }
 
   async function fetchMovieDetails(movieId) {
-  setLoading(true);
-  try {
-    const [dRes, cRes, rRes, pRes] = await Promise.all([
-      fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
-      fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
-      fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
-      fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`),
-    ]);
+    setLoading(true);
+    try {
+      const [dRes, cRes, rRes, pRes] = await Promise.all([
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`),
+      ]);
 
-    const details = await dRes.json();
-    const credits = await cRes.json();
-    const releaseDates = await rRes.json();
-    const providers = await pRes.json();
+      const details = await dRes.json();
+      const credits = await cRes.json();
+      const releaseDates = await rRes.json();
+      const providers = await pRes.json();
 
-    // Get US maturity rating
-    const usRating = releaseDates.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "N/A";
+      const usRating = releaseDates.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "N/A";
 
-    setSelectedMovie({
-      ...details,
-      cast: credits.cast?.slice(0, 5) || [],
-      director: credits.crew?.find(p => p.job === "Director"),
-      maturity: usRating,
-    });
+      setSelectedMovie({
+        ...details,
+        cast: credits.cast?.slice(0, 5) || [],
+        director: credits.crew?.find(p => p.job === "Director"),
+        maturity: usRating,
+      });
 
-    setStreamingProviders(providers.results?.[selectedCountry] || null);
-  } catch (e) {
-    console.error("Failed to fetch movie details:", e);
+      setStreamingProviders(providers.results?.[selectedCountry] || null);
+    } catch (e) {
+      console.error("Failed to fetch movie details:", e);
+    }
+    setLoading(false);
   }
-  setLoading(false);
-}
-
-
 
   // ─── List Helpers ────────────────────────────────────────────────────────
   function addMovieToPerson(movie, num) {
     const list = num===1 ? person1Movies : person2Movies;
     if (list.some(m=>m.id===movie.id)) return;
     const updated = [...list, movie];
-    if (num===1) { setPerson1Movies(updated); saveLS("mm_p1", updated); }
-    else { setPerson2Movies(updated); saveLS("mm_p2", updated); }
+    if (num===1) { setPerson1Movies(updated); saveToStorage("mm_p1", updated); }
+    else { setPerson2Movies(updated); saveToStorage("mm_p2", updated); }
   }
   function removeMovieFromPerson(id, num) {
     const updated = (num===1?person1Movies:person2Movies).filter(m=>m.id!==id);
-    if (num===1) { setPerson1Movies(updated); saveLS("mm_p1", updated); }
-    else { setPerson2Movies(updated); saveLS("mm_p2", updated); }
+    if (num===1) { setPerson1Movies(updated); saveToStorage("mm_p1", updated); }
+    else { setPerson2Movies(updated); saveToStorage("mm_p2", updated); }
   }
   const isInPerson1 = (id) => person1Movies.some(m=>m.id===id);
   const isInPerson2 = (id) => person2Movies.some(m=>m.id===id);
@@ -319,7 +384,18 @@ export default function MovieTracker() {
         const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=1985-01-01`);
         results = (await res.json()).results||[];
       }
-      setRecommendations(results.filter(m=>!existingIds.has(m.id)).slice(0,12));
+      
+      // Filter out existing movies and G/PG rated movies
+      const filtered = results.filter(m=>!existingIds.has(m.id));
+      const toCheck = filtered.slice(0, 20);
+      const checkedMovies = await Promise.all(
+        toCheck.map(async (m) => ({
+          ...m,
+          shouldExclude: await shouldExcludeMovie(m.id)
+        }))
+      );
+      const finalFiltered = checkedMovies.filter(m => !m.shouldExclude);
+      setRecommendations(finalFiltered.slice(0,12));
     } catch(e) { setRecommendations([]); }
     setLoading(false);
   }
@@ -407,17 +483,14 @@ export default function MovieTracker() {
                       <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold">
                         <Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}
                       </div>
-                        )}
-                  <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
-                  {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
-                  {movie.certification && (
-                    <span className="text-zinc-400 font-medium border border-zinc-600 px-2 py-0.5 rounded">
-                      {movie.certification}
-                    </span>
                     )}
-                  </div>  
                     <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
                     {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
+                    {movie.maturity && movie.maturity !== "N/A" && (
+                      <span className="text-zinc-400 font-medium border border-zinc-600 px-2 py-0.5 rounded">
+                        {movie.maturity}
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-3 mb-6 flex-wrap">
                     {!isInPerson1(movie.id) && <button onClick={()=>addMovieToPerson(movie,1)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-lg font-medium transition-colors"><Plus className="w-5 h-5"/>{person1Name}</button>}
@@ -628,9 +701,9 @@ export default function MovieTracker() {
           </div>
           {/* Name Inputs */}
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <input type="text" value={person1Name} onChange={e=>{setPerson1Name(e.target.value);saveLS("mm_n1",e.target.value);}} placeholder="First person's name"
+            <input type="text" value={person1Name} onChange={e=>{setPerson1Name(e.target.value);saveToStorage("mm_n1",e.target.value);}} placeholder="First person's name"
               className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"/>
-            <input type="text" value={person2Name} onChange={e=>{setPerson2Name(e.target.value);saveLS("mm_n2",e.target.value);}} placeholder="Second person's name"
+            <input type="text" value={person2Name} onChange={e=>{setPerson2Name(e.target.value);saveToStorage("mm_n2",e.target.value);}} placeholder="Second person's name"
               className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
           </div>
           {/* Search */}
