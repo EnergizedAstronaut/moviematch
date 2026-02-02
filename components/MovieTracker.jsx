@@ -800,9 +800,10 @@ const filteredTrendingMovies = filterMatureMovies(trendingMovies);
   />
 )}
 
-{showCompatibilityModal && (
-  <CompatibilityModal />
-)}
+{showCompatibilityModal && <CompatibilityModal />}
 
-export default MovieTracker;
+      </div>
+    </div>
+  );
+}
 
