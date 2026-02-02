@@ -251,6 +251,58 @@ export default function MovieTracker() {
     } catch(e) {}
     setLoading(false);
   }
+async function fetchMovies(query = "") {
+  setLoading(true);
+
+  try {
+    let url;
+
+    // --- SEARCH MODE ---
+    if (query && query.trim().length > 0) {
+      url = `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}` +
+            `&query=${encodeURIComponent(query)}` +
+            `&language=en-US` +
+            `&region=US` +
+            `&include_adult=false`;
+    }
+    // --- DISCOVER MODE ---
+    else {
+      url = `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}` +
+            `&language=en-US` +
+            `&region=US` +
+            `&sort_by=popularity.desc` +
+            `&primary_release_date.gte=1985-01-01` +
+            `&vote_count.gte=200` +
+            `&with_original_language=en` +
+            `&certification_country=US` +
+            `&certification=PG-13,R,NC-17`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.results) {
+      setMovies([]);
+      return;
+    }
+
+    // --- SAFETY FILTERS (extra protection) ---
+    const filtered = data.results.filter(m =>
+      m.original_language === "en" &&           // remove foreign originals
+      m.vote_count >= 200 &&                    // remove obscure imports
+      m.release_date &&                         // must have release date
+      Number(m.release_date.slice(0, 4)) >= 1985
+    );
+
+    setMovies(filtered);
+
+  } catch (e) {
+    console.error("Movie fetch failed:", e);
+    setMovies([]);
+  }
+
+  setLoading(false);
+}
 
   async function fetchMovieDetails(movieId) {
     setLoading(true);
