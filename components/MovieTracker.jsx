@@ -529,7 +529,7 @@ export default function MovieTracker() {
     </div>
   );
 
-  // --- MovieModal (Polished Modern-style layout) ---------------------------
+ // --- MovieModal (Full — fixed header cutoff + responsive) ----------------
 const MovieModal = ({ movie, onClose }) => {
   if (!movie) return null;
 
@@ -565,11 +565,14 @@ const MovieModal = ({ movie, onClose }) => {
     );
   };
 
-  const maturityColor = movie.maturity === "R"
-    ? "border-red-500/60 text-red-400"
-    : movie.maturity === "PG-13"
-    ? "border-orange-500/60 text-orange-400"
-    : "border-zinc-600 text-zinc-300";
+  const maturityColor =
+    movie.maturity === "R"
+      ? "border-red-500/60 text-red-400"
+      : movie.maturity === "PG-13"
+      ? "border-orange-500/60 text-orange-400"
+      : movie.maturity === "NC-17"
+      ? "border-purple-500/60 text-purple-400"
+      : "border-zinc-600 text-zinc-300";
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 overflow-y-auto backdrop-blur-sm">
@@ -579,13 +582,13 @@ const MovieModal = ({ movie, onClose }) => {
           {/* Backdrop */}
           <div className="relative">
             {movie.backdrop_path && (
-              <div className="relative h-72 md:h-[420px]">
+              <div className="relative min-h-[320px] md:min-h-[480px]">
                 <img
                   src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`}
                   alt={movie.title}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/40 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/70 to-transparent" />
               </div>
             )}
 
@@ -598,7 +601,7 @@ const MovieModal = ({ movie, onClose }) => {
           </div>
 
           {/* Content */}
-          <div className="relative z-10 px-5 md:px-8 pb-8 -mt-12 md:-mt-20">
+          <div className="relative z-10 px-5 md:px-8 pb-8 -mt-8 md:-mt-14">
             <div className="flex flex-col md:flex-row gap-6">
 
               {/* Poster */}
@@ -620,11 +623,14 @@ const MovieModal = ({ movie, onClose }) => {
                 </h2>
 
                 {movie.tagline && (
-                  <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>
+                  <p className="text-zinc-400 italic mb-4">
+                    {movie.tagline}
+                  </p>
                 )}
 
-                {/* Rating Row */}
+                {/* Meta Row */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-5">
+
                   {movie.vote_average > 0 && (
                     <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold">
                       <Star className="w-4 h-4" fill="currentColor" />
@@ -649,8 +655,9 @@ const MovieModal = ({ movie, onClose }) => {
                   )}
                 </div>
 
-                {/* Action Buttons */}
+                {/* Buttons */}
                 <div className="flex flex-wrap gap-3 justify-center md:justify-start mb-6">
+
                   {movie.trailer && (
                     <a
                       href={movie.trailer}
@@ -658,7 +665,8 @@ const MovieModal = ({ movie, onClose }) => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
                     >
-                      <Play className="w-5 h-5" /> Watch Trailer
+                      <Play className="w-5 h-5" />
+                      Watch Trailer
                     </a>
                   )}
 
@@ -669,7 +677,8 @@ const MovieModal = ({ movie, onClose }) => {
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-500 text-white px-5 py-2.5 rounded-lg font-medium transition"
                     >
-                      <ExternalLink className="w-5 h-5" /> IMDb
+                      <ExternalLink className="w-5 h-5" />
+                      IMDb
                     </a>
                   )}
 
@@ -715,22 +724,28 @@ const MovieModal = ({ movie, onClose }) => {
 
             {/* Where to Watch */}
             <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700 mt-4">
+
               <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                 <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Play className="w-5 h-5 text-red-500" /> Where to Watch
+                  <Play className="w-5 h-5 text-red-500" />
+                  Where to Watch
                 </h3>
 
                 <button
                   onClick={() => setShowCountrySelector(!showCountrySelector)}
                   className="flex items-center gap-2 bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg text-sm text-white transition"
                 >
-                  <Globe className="w-4 h-4" /> {cur.flag} {cur.code}
+                  <Globe className="w-4 h-4" />
+                  {cur.flag} {cur.code}
                 </button>
               </div>
 
               {showCountrySelector && (
                 <div className="mb-4 bg-zinc-900 rounded-lg p-3 border border-zinc-700">
-                  <p className="text-xs text-zinc-400 mb-2">Select your region:</p>
+                  <p className="text-xs text-zinc-400 mb-2">
+                    Select your region:
+                  </p>
+
                   <div className="grid grid-cols-3 gap-2">
                     {COUNTRIES.map(c => (
                       <button
@@ -770,7 +785,8 @@ const MovieModal = ({ movie, onClose }) => {
                   rel="noopener noreferrer"
                   className="mt-4 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition"
                 >
-                  View all options on JustWatch <ExternalLink className="w-4 h-4" />
+                  View all options on JustWatch
+                  <ExternalLink className="w-4 h-4" />
                 </a>
               )}
 
@@ -778,12 +794,14 @@ const MovieModal = ({ movie, onClose }) => {
                 Streaming data provided by JustWatch • {cur.name}
               </p>
             </div>
+
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 
   // --- SaveModal -----------------------------------------------------------
   const SaveModal = () => (
