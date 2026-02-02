@@ -49,17 +49,7 @@ function countGenres(movies) {
   movies.forEach((m) => (m.genre_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }));
   return counts;
 }
-// Filter out PG or G movies
-const filterMatureMovies = (movies) => {
-  return movies.filter((movie) => movie.rating && !["PG", "G"].includes(movie.rating));
-};
-// Filtered arrays
-const filteredPerson1Movies = filterMatureMovies(person1Movies);
-const filteredPerson2Movies = filterMatureMovies(person2Movies);
-const filteredCommonMovies = filterMatureMovies(commonMovies);
-const filteredRecommendations = filterMatureMovies(recommendations);
-const filteredSearchResults = filterMatureMovies(searchResults);
-const filteredTrendingMovies = filterMatureMovies(trendingMovies);
+
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function MovieTracker() {
@@ -85,6 +75,17 @@ export default function MovieTracker() {
   const [saveMessage, setSaveMessage] = useState("");
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
+  // Filter out PG or G movies
+const filterMatureMovies = (movies) => {
+  return movies.filter((movie) => movie.rating && !["PG", "G"].includes(movie.rating));
+};
+// Filtered arrays
+const filteredPerson1Movies = filterMatureMovies(person1Movies);
+const filteredPerson2Movies = filterMatureMovies(person2Movies);
+const filteredCommonMovies = filterMatureMovies(commonMovies);
+const filteredRecommendations = filterMatureMovies(recommendations);
+const filteredSearchResults = filterMatureMovies(searchResults);
+const filteredTrendingMovies = filterMatureMovies(trendingMovies);
 
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
