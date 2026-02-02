@@ -717,95 +717,113 @@ const filteredTrendingMovies = filterMatureMovies(trendingMovies);
     )}
   </div>
 ))}
+{/* FOR YOU */}
+{activeTab === "recommendations" && !loading && (
+  <div className="space-y-6">
 
+    {togethernessMode && (
+      <div
+        className="rounded-2xl p-8 border border-pink-900/20"
+        style={{ background: "linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))" }}
+      >
+        <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+          <Sparkles className="w-7 h-7 text-yellow-400" />✨ Togetherness Mode Active
+        </h2>
+        <p className="text-zinc-300 mb-2">
+          Finding movies that match <strong>both</strong> of your tastes:
+        </p>
+        <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
+          <li>Analyzing top 3 shared genres from both lists</li>
+          <li>Only showing highly-rated films (6.5+ rating)</li>
+          <li>Smart scoring based on genre overlap and popularity</li>
+          <li>Bonus points for newer movies (2020+)</li>
+        </ul>
+        {commonMovies.length > 0 && (
+          <div
+            className="mt-4 rounded-lg p-3 border border-pink-800/30"
+            style={{ background: "rgba(131,24,67,0.2)" }}
+          >
+            <p className="text-pink-300 text-sm flex items-center gap-2">
+              <Heart className="w-4 h-4" fill="currentColor" /> You have {commonMovies.length} movie{commonMovies.length > 1 ? "s" : ""} in common!
+            </p>
+          </div>
+        )}
+      </div>
+    )}
 
-        {/* FOR YOU */}
-        {activeTab==="recommendations"&&!loading && (
-          <div className="space-y-6">
-            {togethernessMode && (
-              <div className="rounded-2xl p-8 border border-pink-900/20" style={{background:"linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))"}}>
-                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Sparkles className="w-7 h-7 text-yellow-400"/>✨ Togetherness Mode Active</h2>
-                <p className="text-zinc-300 mb-2">Finding movies that match <strong>both</strong> of your tastes:</p>
-                <ul className="text-zinc-400 text-sm space-y-1 ml-6 list-disc">
-                  <li>Analyzing top 3 shared genres from both lists</li>
-                  <li>Only showing highly-rated films (6.5+ rating)</li>
-                  <li>Smart scoring based on genre overlap and popularity</li>
-                  <li>Bonus points for newer movies (2020+)</li>
-                </ul>
-                {commonMovies.length>0 && (
-                  <div className="mt-4 rounded-lg p-3 border border-pink-800/30" style={{background:"rgba(131,24,67,0.2)"}}>
-                    <p className="text-pink-300 text-sm flex items-center gap-2"><Heart className="w-4 h-4" fill="currentColor"/> You have {commonMovies.length} movie{commonMovies.length>1?"s":""} in common!</p>
-                  </div>
-                )}
-              </div>
-            )}
-            <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
-              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
-              <p className="text-zinc-400 mb-6">{togethernessMode?"Smart picks based on your shared genre preferences":"Based on your shared interests and favorite genres"}</p>
-              <button onClick={generateRecommendations} className="text-white font-semibold px-6 py-3 rounded-xl transition-all" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
-            </div>
-           {/* Recommendations Section */}
-
-{filteredRecommendations && filteredRecommendations.length > 0 ? (
-
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-    {filteredRecommendations.map((m) => (
-      <MovieCard
-        key={m.id}
-        movie={m}
-        onSelect={(mv) => fetchMovieDetails(mv.id)}
-        showActions
-      />
-    ))}
-  </div>
-
-) : (
-
-  <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
-    <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-    <p className="text-zinc-500 text-lg mb-2">
-      Add movies to both lists to get personalized recommendations
-    </p>
-    <p className="text-zinc-600 text-sm">
-      The more movies you add, the better the recommendations!
-    </p>
-  </div>
-
-)}
-
-{/* Modals */}
-
-{selectedMovie && (
-  <MovieModal
-    movie={selectedMovie}
-    onClose={() => setSelectedMovie(null)}
-  />
-)}
-
-{showSaveModal && (
-  <SaveModal
-    listName={listName}
-    setListName={setListName}
-    saveMessage={saveMessage}
-    setShowSaveModal={setShowSaveModal}
-    setSaveMessage={setSaveMessage}
-    onSave={handleSave}
-  />
-)}
-
-{showLoadModal && (
-  <LoadModal
-    savedLists={savedLists}
-    loadList={loadList}
-    deleteList={deleteList}
-    setShowLoadModal={setShowLoadModal}
-  />
-)}
-
-{showCompatibilityModal && <CompatibilityModal />}
-                  </div>
+    <div
+      className="rounded-2xl p-8 border border-purple-900/20"
+      style={{ background: "linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))" }}
+    >
+      <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
+        <Heart className="w-7 h-7 text-pink-400" />
+        {togethernessMode ? "Perfect for Both of You" : "Recommended for You"}
+      </h2>
+      <p className="text-zinc-400 mb-6">
+        {togethernessMode
+          ? "Smart picks based on your shared genre preferences"
+          : "Based on your shared interests and favorite genres"}
+      </p>
+      <button
+        onClick={generateRecommendations}
+        className="text-white font-semibold px-6 py-3 rounded-xl transition-all"
+        style={{ background: "linear-gradient(to right, #ca8a04, #ea580c)" }}
+      >
+        Refresh Recommendations
+      </button>
     </div>
-  );
-}
+
+    {/* Recommendations Section */}
+    {filteredRecommendations && filteredRecommendations.length > 0 ? (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        {filteredRecommendations.map((m) => (
+          <MovieCard
+            key={m.id}
+            movie={m}
+            onSelect={(mv) => fetchMovieDetails(mv.id)}
+            showActions
+          />
+        ))}
+      </div>
+    ) : (
+      <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+        <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+        <p className="text-zinc-500 text-lg mb-2">
+          Add movies to both lists to get personalized recommendations
+        </p>
+        <p className="text-zinc-600 text-sm">
+          The more movies you add, the better the recommendations!
+        </p>
+      </div>
+    )}
+
+    {/* Modals */}
+    {selectedMovie && (
+      <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
+    )}
+
+    {showSaveModal && (
+      <SaveModal
+        listName={listName}
+        setListName={setListName}
+        saveMessage={saveMessage}
+        setShowSaveModal={setShowSaveModal}
+        setSaveMessage={setSaveMessage}
+        onSave={handleSave}
+      />
+    )}
+
+    {showLoadModal && (
+      <LoadModal
+        savedLists={savedLists}
+        loadList={loadList}
+        deleteList={deleteList}
+        setShowLoadModal={setShowLoadModal}
+      />
+    )}
+
+    {showCompatibilityModal && <CompatibilityModal />}
+  </div>
+)}
 
 
