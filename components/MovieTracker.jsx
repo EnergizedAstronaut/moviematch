@@ -74,37 +74,10 @@ export default function MovieTracker() {
   const [saveMessage, setSaveMessage] = useState("");
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
-  const [storageReady, setStorageReady] = useState(false);
 
   // ─── Bootstrap ───────────────────────────────────────────────────────────
   useEffect(() => {
-    // Check storage availability
-    const checkStorage = async () => {
-      if (typeof window !== 'undefined' && window.storage) {
-        console.log("Storage API found!");
-        
-        // Test storage with a simple write/read
-        try {
-          await window.storage.set("test_key", "test_value");
-          const result = await window.storage.get("test_key");
-          console.log("Storage test successful:", result);
-          await window.storage.delete("test_key");
-          
-          setStorageReady(true);
-          loadFromStorage();
-          fetchTrending();
-          loadSavedLists();
-        } catch (e) {
-          console.error("Storage test failed:", e);
-          setTimeout(checkStorage, 100);
-        }
-      } else {
-        console.log("Storage not available yet, retrying...");
-        // Retry every 100ms for up to 10 seconds
-        setTimeout(checkStorage, 100);
-      }
-    };
-    checkStorage();
+    fetchTrending();
   }, []);
 
   useEffect(() => {
@@ -115,118 +88,26 @@ export default function MovieTracker() {
     }
   }, [person1Movies, person2Movies]);
 
-  // ─── Persistent Storage ──────────────────────────────────────────────────
-  function isStorageAvailable() {
-    return storageReady && typeof window !== 'undefined' && window.storage;
-  }
-
-  async function loadFromStorage() {
-    if (!isStorageAvailable()) return;
-    try {
-      const [p1Result, p2Result, n1Result, n2Result] = await Promise.all([
-        window.storage.get("mm_p1").catch(() => null),
-        window.storage.get("mm_p2").catch(() => null),
-        window.storage.get("mm_n1").catch(() => null),
-        window.storage.get("mm_n2").catch(() => null),
-      ]);
-      if (p1Result?.value) setPerson1Movies(JSON.parse(p1Result.value));
-      if (p2Result?.value) setPerson2Movies(JSON.parse(p2Result.value));
-      if (n1Result?.value) setPerson1Name(n1Result.value);
-      if (n2Result?.value) setPerson2Name(n2Result.value);
-    } catch (e) {
-      console.error("Load error:", e);
-    }
-  }
-
-  async function saveToStorage(k, v) {
-    if (!isStorageAvailable()) return;
-    try {
-      await window.storage.set(k, typeof v === "string" ? v : JSON.stringify(v));
-    } catch (e) {
-      console.error("Save error:", e);
-    }
-  }
-
-  // ─── Saved Lists ─────────────────────────────────────────────────────────
-  async function loadSavedLists() {
-    if (!isStorageAvailable()) return;
-    try {
-      const result = await window.storage.get("mm_saved_lists").catch(() => null);
-      if (result?.value) {
-        setSavedLists(JSON.parse(result.value));
-      }
-    } catch (e) {
-      console.error("Load lists error:", e);
-    }
-  }
-
-  async function saveCurrentList() {
-    console.log("saveCurrentList called");
-    console.log("List name:", listName);
-    console.log("Storage ready:", storageReady);
-    console.log("Storage available:", isStorageAvailable());
-    
+  // ─── Save/Load Lists (in-memory only) ────────────────────────────────────
+  function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
-    if (!isStorageAvailable()) { 
-      console.log("Storage not available, setting up retry...");
-      setSaveMessage("⏳ Initializing storage..."); 
-      // Auto-retry when storage becomes ready
-      const checkAndSave = setInterval(() => {
-        if (isStorageAvailable()) {
-          clearInterval(checkAndSave);
-          saveCurrentList();
-        }
-      }, 200);
-      // Stop trying after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkAndSave);
-        if (!isStorageAvailable()) {
-          setSaveMessage("❌ Storage failed to initialize. Please refresh the page.");
-        }
-      }, 5000);
-      return; 
-    }
     
-    setSaveMessage("💾 Saving...");
-    console.log("Starting save process...");
+    const key = listName.toLowerCase().replace(/\s+/g, "-");
+    const entry = {
+      key,
+      name: listName,
+      person1Name, person2Name, person1Movies, person2Movies,
+      savedAt: new Date().toISOString(),
+    };
     
-    try {
-      const key = listName.toLowerCase().replace(/\s+/g, "-");
-      const entry = {
-        key,
-        name: listName,
-        person1Name, person2Name, person1Movies, person2Movies,
-        savedAt: new Date().toISOString(),
-      };
-      
-      console.log("Entry to save:", entry);
-      
-      // Load existing lists
-      console.log("Loading existing lists...");
-      const result = await window.storage.get("mm_saved_lists").catch(() => null);
-      console.log("Existing lists result:", result);
-      
-      let lists = result?.value ? JSON.parse(result.value) : [];
-      console.log("Parsed lists:", lists);
-      
-      // Overwrite if same key exists, otherwise append
-      const idx = lists.findIndex(l => l.key === key);
-      if (idx >= 0) lists[idx] = entry; else lists.push(entry);
-      
-      console.log("Updated lists:", lists);
-      console.log("Saving to storage...");
-      
-      const saveResult = await window.storage.set("mm_saved_lists", JSON.stringify(lists));
-      console.log("Save result:", saveResult);
-      
-      setSavedLists(lists);
-      setSaveMessage("✅ List saved successfully!");
-      console.log("Save complete!");
-      setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 1500);
-    } catch (e) {
-      console.error("Save error:", e);
-      setSaveMessage("❌ Error saving: " + e.message);
-    }
+    // Overwrite if same key exists, otherwise append
+    const idx = savedLists.findIndex(l => l.key === key);
+    const updated = [...savedLists];
+    if (idx >= 0) updated[idx] = entry; else updated.push(entry);
+    
+    setSavedLists(updated);
+    setSaveMessage("✅ List saved! (Note: Lists are only saved for this session)");
+    setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 2000);
   }
 
   const handleSave = () => {
@@ -234,46 +115,23 @@ export default function MovieTracker() {
     saveCurrentList();
   };
 
-  const handleOpenLoadModal = () => { loadSavedLists(); setShowLoadModal(true); };
+  const handleOpenLoadModal = () => { setShowLoadModal(true); };
 
-  async function loadList(key) {
-    if (!isStorageAvailable()) return;
-    try {
-      const result = await window.storage.get("mm_saved_lists").catch(() => null);
-      if (!result?.value) return;
-      
-      const lists = JSON.parse(result.value);
-      const d = lists.find(l => l.key === key);
-      if (d) {
-        setPerson1Name(d.person1Name); setPerson2Name(d.person2Name);
-        setPerson1Movies(d.person1Movies); setPerson2Movies(d.person2Movies);
-        await Promise.all([
-          saveToStorage("mm_n1", d.person1Name),
-          saveToStorage("mm_n2", d.person2Name),
-          saveToStorage("mm_p1", d.person1Movies),
-          saveToStorage("mm_p2", d.person2Movies),
-        ]);
-        setShowLoadModal(false); setActiveTab("compare");
-      }
-    } catch (e) { 
-      console.error("Load error:", e);
-      alert("Failed to load list."); 
+  function loadList(key) {
+    const d = savedLists.find(l => l.key === key);
+    if (d) {
+      setPerson1Name(d.person1Name); 
+      setPerson2Name(d.person2Name);
+      setPerson1Movies(d.person1Movies); 
+      setPerson2Movies(d.person2Movies);
+      setShowLoadModal(false); 
+      setActiveTab("compare");
     }
   }
 
-  async function deleteList(key) {
+  function deleteList(key) {
     if (!confirm("Delete this saved list?")) return;
-    if (!isStorageAvailable()) return;
-    try {
-      const result = await window.storage.get("mm_saved_lists").catch(() => null);
-      if (!result?.value) return;
-      
-      const lists = JSON.parse(result.value).filter(l => l.key !== key);
-      await window.storage.set("mm_saved_lists", JSON.stringify(lists));
-      setSavedLists(lists);
-    } catch (e) {
-      console.error("Delete error:", e);
-    }
+    setSavedLists(savedLists.filter(l => l.key !== key));
   }
 
   // ─── TMDB ────────────────────────────────────────────────────────────────
@@ -393,13 +251,13 @@ export default function MovieTracker() {
     const list = num===1 ? person1Movies : person2Movies;
     if (list.some(m=>m.id===movie.id)) return;
     const updated = [...list, movie];
-    if (num===1) { setPerson1Movies(updated); saveToStorage("mm_p1", updated); }
-    else { setPerson2Movies(updated); saveToStorage("mm_p2", updated); }
+    if (num===1) setPerson1Movies(updated);
+    else setPerson2Movies(updated);
   }
   function removeMovieFromPerson(id, num) {
     const updated = (num===1?person1Movies:person2Movies).filter(m=>m.id!==id);
-    if (num===1) { setPerson1Movies(updated); saveToStorage("mm_p1", updated); }
-    else { setPerson2Movies(updated); saveToStorage("mm_p2", updated); }
+    if (num===1) setPerson1Movies(updated);
+    else setPerson2Movies(updated);
   }
   const isInPerson1 = (id) => person1Movies.some(m=>m.id===id);
   const isInPerson2 = (id) => person2Movies.some(m=>m.id===id);
@@ -645,7 +503,8 @@ export default function MovieTracker() {
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
         <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
-        <p className="text-zinc-400 mb-6">Give your movie lists a name to save them for later</p>
+        <p className="text-zinc-400 mb-2">Give your movie lists a name to save them</p>
+        <p className="text-yellow-500 text-sm mb-6">⚠️ Note: Lists are only saved for this session and will be lost if you refresh the page</p>
         <input type="text" placeholder="e.g., Movie Night Favorites" value={listName} onChange={e=>setListName(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&handleSave()}
           className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500" autoFocus/>
@@ -780,12 +639,6 @@ export default function MovieTracker() {
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              {!storageReady && (
-                <div className="px-4 py-2 rounded-lg bg-yellow-900/30 border border-yellow-700/50 text-yellow-400 text-sm flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-yellow-400"/>
-                  <span>Initializing storage...</span>
-                </div>
-              )}
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2">
                 <Film className="w-5 h-5"/> Save Lists
               </button>
