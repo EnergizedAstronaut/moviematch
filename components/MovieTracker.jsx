@@ -296,6 +296,20 @@ export default function MovieTracker() {
     return {score,sharedGenres,insights};
   }
 
+  function getRecommendationMatch(movie) {
+    if (!movie.genre_ids) return null;
+    const p1G = countGenres(person1Movies);
+    const p2G = countGenres(person2Movies);
+    let p1Score = 0, p2Score = 0;
+    movie.genre_ids.forEach(g => {
+      if (p1G[g]) p1Score += p1G[g];
+      if (p2G[g]) p2Score += p2G[g];
+    });
+    if (p1Score === 0 && p2Score === 0) return null;
+    if (Math.abs(p1Score - p2Score) <= 1) return "both"; // nearly equal
+    return p1Score > p2Score ? "person1" : "person2";
+  }
+
   // --- Recommendations -----------------------------------------------------
   async function doFetchRecommendations(p1, p2, togetherMode) {
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
@@ -412,16 +426,16 @@ export default function MovieTracker() {
   }
 
   useEffect(() => {
-    if (activeTab === "recommendations" && person1Movies.length > 0 && person2Movies.length > 0) {
+    if (person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
-  }, [person1Movies, person2Movies, togethernessMode, activeTab, recsKey, streamingOnly, selectedCountry]);
+  }, [person1Movies, person2Movies, togethernessMode, recsKey, streamingOnly, selectedCountry]);
 
   // ===========================================================================
   // SUB-COMPONENTS
   // ===========================================================================
 
-  const MovieCard = ({movie,onSelect,showActions=false,personNum=null}) => (
+  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null}) => (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
@@ -438,6 +452,20 @@ export default function MovieTracker() {
         {movie._hasStream && (
           <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
             <span className="text-xs font-semibold text-white">▶ Stream</span>
+          </div>
+        )}
+        {/* Match indicator badge */}
+        {matchIndicator && (
+          <div className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${
+            matchIndicator === "person1" ? "bg-blue-600/90" :
+            matchIndicator === "person2" ? "bg-purple-600/90" :
+            "bg-pink-600/90"
+          }`}>
+            <span className="text-xs font-semibold text-white">
+              {matchIndicator === "person1" ? person1Name.split(" ")[0] :
+               matchIndicator === "person2" ? person2Name.split(" ")[0] :
+               "Both"}
+            </span>
           </div>
         )}
       </div>
@@ -789,7 +817,7 @@ export default function MovieTracker() {
               <button onClick={()=>{ setRecommendations([]); setRecsKey(k=>k+1); }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null}/>)}</div>
             ) : (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                 <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
