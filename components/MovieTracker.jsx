@@ -115,7 +115,7 @@ export default function MovieTracker() {
   const [recsKey, setRecsKey] = useState(0);
 
   // NEW: streaming toggle
-  const [streamingOnly, setStreamingOnly] = useState(true);
+  const [streamingOnly, setStreamingOnly] = useState(false);
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
