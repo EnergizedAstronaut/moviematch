@@ -306,14 +306,11 @@ export default function MovieTracker() {
       if (p2G[g]) p2Score += p2G[g];
     });
     if (p1Score === 0 && p2Score === 0) return null;
-    const match = Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
-    console.log(`🎯 Match for "${movie.title}":`, match, { p1Score, p2Score });
-    return match;
+    return Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
   }
 
   // --- Recommendations -----------------------------------------------------
   async function doFetchRecommendations(p1, p2, togetherMode) {
-    console.log("🔄 Fetching recommendations...", { p1Count: p1.length, p2Count: p2.length, togetherMode });
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
 
@@ -413,13 +410,14 @@ export default function MovieTracker() {
         // reinforce recency at final sort so it isn't washed out by streaming bonus
         const finalYr = parseInt((movie.release_date || "0").slice(0,4));
         finalScore += finalYr >= 2025 ? 80 : finalYr >= 2024 ? 65 : finalYr >= 2023 ? 45 : finalYr >= 2022 ? 25 : 0;
+        // Add randomization so each refresh gives different results
+        finalScore += Math.random() * 100;
 
         final.push({ ...movie, _finalScore: finalScore, _stream: stream });
       }
 
       // Re-sort by finalScore after streaming adjustments
       final.sort((a, b) => b._finalScore - a._finalScore);
-      console.log("✅ Recommendations ready:", final.length);
       setRecommendations(final);
     } catch(e) {
       console.error("Recs error:", e);
@@ -429,7 +427,6 @@ export default function MovieTracker() {
   }
 
   useEffect(() => {
-    console.log("📊 Recs useEffect triggered", { recsKey, p1: person1Movies.length, p2: person2Movies.length });
     if (person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
@@ -831,13 +828,9 @@ export default function MovieTracker() {
               <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ 
-                console.log("🔄 Refresh button clicked");
                 setRecommendations([]);
                 setLoading(true);
-                setRecsKey(k => {
-                  console.log("🔑 recsKey incrementing from", k, "to", k+1);
-                  return k+1;
-                });
+                setRecsKey(k => k+1);
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
