@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 // --- Inline SVG Icons --------------------------------------------------------
 const iconBase = { width:24, height:24, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round" };
@@ -9,33 +9,27 @@ const Film = (p) => <svg {...iconBase} {...p}><rect x="2" y="4" width="20" heigh
 const Plus = (p) => <svg {...iconBase} {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>;
 const X = (p) => <svg {...iconBase} {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
 const Play = (p) => <svg {...iconBase} {...p}><polygon points="5,3 19,12 5,21" fill="currentColor" stroke="none"/></svg>;
-const Star = (p) => { const {fill:f, ...rest} = p||{}; return <svg {...iconBase} {...rest}><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill={f||"none"} stroke="currentColor"/></svg>; };
+const Star = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {...rest}><polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" fill={f||"none"} stroke="currentColor"/></svg>; };
 const Users = (p) => <svg {...iconBase} {...p}><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="9" r="2"/><path d="M23 21v-1a3 3 0 0 0-3-3h-.5"/></svg>;
-const Heart = (p) => { const {fill:f, ...rest} = p||{}; return <svg {...iconBase} {...rest}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill={f||"none"}/></svg>; };
-const Sparkles = (p) => { const {fill:f, ...rest} = p||{}; return <svg {...iconBase} {...rest}><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" fill={f||"none"}/><path d="M19 13l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill={f||"none"}/><path d="M5 19l.5 1.5 1.5.5-1.5.5L5 23l-.5-1.5L3 21l1.5-.5z" fill={f||"none"}/></svg>; };
+const Heart = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {...rest}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill={f||"none"}/></svg>; };
+const Sparkles = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {...rest}><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5z" fill={f||"none"}/><path d="M19 13l1 3 3 1-3 1-1 3-1-3-3-1 3-1z" fill={f||"none"}/><path d="M5 19l.5 1.5 1.5.5-1.5.5L5 23l-.5-1.5L3 21l1.5-.5z" fill={f||"none"}/></svg>; };
 const TrendingUp = (p) => <svg {...iconBase} {...p}><polyline points="23,6 13.5,15.5 8.5,10.5 1,18"/><polyline points="17,6 23,6 23,12"/></svg>;
 const ExternalLink = (p) => <svg {...iconBase} {...p}><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15,3 21,3 21,9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>;
 const Globe = (p) => <svg {...iconBase} {...p}><circle cx="12" cy="12" r="10"/><ellipse cx="12" cy="12" rx="4" ry="10"/><line x1="2" y1="12" x2="22" y2="12"/></svg>;
 const BarChart3 = (p) => <svg {...iconBase} {...p}><rect x="3" y="12" width="4" height="9"/><rect x="10" y="7" width="4" height="14"/><rect x="17" y="2" width="4" height="19"/></svg>;
-const Zap = (p) => { const {fill:f, ...rest} = p||{}; return <svg {...iconBase} {...rest}><polygon points="13,2 3,14 12,14 11,22 21,10 12,10" fill={f||"none"}/></svg>; };
+const Zap = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {...rest}><polygon points="13,2 3,14 12,14 11,22 21,10 12,10" fill={f||"none"}/></svg>; };
 
 // --- Constants ---------------------------------------------------------------
 const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
 const COUNTRIES = [
-  { code:"US", name:"United States", flag:"🇺🇸" },
-  { code:"GB", name:"United Kingdom", flag:"🇬🇧" },
-  { code:"CA", name:"Canada", flag:"🇨🇦" },
-  { code:"AU", name:"Australia", flag:"🇦🇺" },
-  { code:"DE", name:"Germany", flag:"🇩🇪" },
-  { code:"FR", name:"France", flag:"🇫🇷" },
-  { code:"ES", name:"Spain", flag:"🇪🇸" },
-  { code:"IT", name:"Italy", flag:"🇮🇹" },
-  { code:"MX", name:"Mexico", flag:"🇲🇽" },
-  { code:"BR", name:"Brazil", flag:"🇧🇷" },
-  { code:"IN", name:"India", flag:"🇮🇳" },
-  { code:"JP", name:"Japan", flag:"🇯🇵" },
+  {code:"US",name:"United States",flag:"🇺🇸"},{code:"GB",name:"United Kingdom",flag:"🇬🇧"},
+  {code:"CA",name:"Canada",flag:"🇨🇦"},{code:"AU",name:"Australia",flag:"🇦🇺"},
+  {code:"DE",name:"Germany",flag:"🇩🇪"},{code:"FR",name:"France",flag:"🇫🇷"},
+  {code:"ES",name:"Spain",flag:"🇪🇸"},{code:"IT",name:"Italy",flag:"🇮🇹"},
+  {code:"MX",name:"Mexico",flag:"🇲🇽"},{code:"BR",name:"Brazil",flag:"🇧🇷"},
+  {code:"IN",name:"India",flag:"🇮🇳"},{code:"JP",name:"Japan",flag:"🇯🇵"},
 ];
 
 const GENRE_NAMES = {
@@ -44,9 +38,33 @@ const GENRE_NAMES = {
   9648:"Mystery",10749:"Romance",878:"Science Fiction",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"
 };
 
+// Normalize apostrophes so matching works regardless of curly vs straight
+function normalizeTitle(t) {
+  return (t || "").toLowerCase().replace(/[\u2018\u2019\u201C\u201D]/g, "'").trim();
+}
+
+// Substrings that kill a movie no matter what
+const BLOCKED_SUBSTRINGS = [
+  "gabriel",          // catches gabriel's inferno + all parts
+  "quieres ser mi",   // catches the spanish title
+];
+
+function isAllowed(movie) {
+  // Must be originally English
+  if (movie.original_language !== "en") return false;
+  const t = normalizeTitle(movie.title);
+  // Block by substring match (case insensitive, apostrophe normalized)
+  for (const block of BLOCKED_SUBSTRINGS) {
+    if (t.includes(block)) return false;
+  }
+  // Block any title that starts with a non-ASCII char like ¿
+  if (/^[^\x20-\x7E]/.test(t)) return false;
+  return true;
+}
+
 function countGenres(movies) {
   const counts = {};
-  movies.forEach((m) => (m.genre_ids || []).forEach((id) => { counts[id] = (counts[id] || 0) + 1; }));
+  movies.forEach(m => (m.genre_ids || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
   return counts;
 }
 
@@ -75,19 +93,18 @@ export default function MovieTracker() {
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  // A counter we bump to force the recommendations useEffect to re-run
+  const [recsKey, setRecsKey] = useState(0);
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, []);
 
   useEffect(() => {
-    if (person1Movies.length > 0 && person2Movies.length > 0) {
-      setCompatibilityScore(calcCompatibilityScore());
-    } else {
-      setCompatibilityScore(null);
-    }
+    if (person1Movies.length > 0 && person2Movies.length > 0) setCompatibilityScore(calcCompatibilityScore());
+    else setCompatibilityScore(null);
   }, [person1Movies, person2Movies]);
 
-  // --- Save/Load (in-memory) -----------------------------------------------
+  // --- Save/Load -----------------------------------------------------------
   function saveCurrentList() {
     if (!listName.trim()) { setSaveMessage("Please enter a list name"); return; }
     const key = listName.toLowerCase().replace(/\s+/g, "-");
@@ -96,7 +113,7 @@ export default function MovieTracker() {
     const updated = [...savedLists];
     if (idx >= 0) updated[idx] = entry; else updated.push(entry);
     setSavedLists(updated);
-    setSaveMessage("✅ List saved!");
+    setSaveMessage("Saved!");
     setTimeout(() => { setShowSaveModal(false); setSaveMessage(""); setListName(""); }, 2000);
   }
   const handleSave = () => { if (!listName.trim()) { setSaveMessage("Please enter a list name."); return; } saveCurrentList(); };
@@ -109,18 +126,15 @@ export default function MovieTracker() {
   // --- Export/Import -------------------------------------------------------
   function exportData() {
     const data = { person1Name, person2Name, person1Movies, person2Movies, savedLists, exportedAt: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `moviematch-${new Date().toISOString().split('T')[0]}.json`;
+    const a = document.createElement("a"); a.href = url;
+    a.download = `moviematch-${new Date().toISOString().split("T")[0]}.json`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    setShowExportModal(false);
+    URL.revokeObjectURL(url); setShowExportModal(false);
   }
   function handleImport(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const file = event.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -130,43 +144,35 @@ export default function MovieTracker() {
         if (data.person1Movies) setPerson1Movies(data.person1Movies);
         if (data.person2Movies) setPerson2Movies(data.person2Movies);
         if (data.savedLists) setSavedLists(data.savedLists);
-        alert('✅ Data imported successfully!');
-        setActiveTab('compare');
-      } catch (err) { alert('❌ Error importing file.'); }
+        alert("Data imported successfully!");
+        setActiveTab("compare");
+      } catch { alert("Error importing file."); }
     };
-    reader.readAsText(file);
-    event.target.value = '';
+    reader.readAsText(file); event.target.value = "";
   }
 
-  // --- TMDB Helpers --------------------------------------------------------
+  // --- TMDB ----------------------------------------------------------------
   async function shouldExcludeMovie(movieId) {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
-      const usRelease = data.results?.find(r => r.iso_3166_1 === 'US');
-      if (!usRelease || !usRelease.release_dates) return false;
-      const certs = usRelease.release_dates.map(rd => rd.certification).filter(c => c && c.trim() !== "");
+      const usRelease = data.results?.find(r => r.iso_3166_1 === "US");
+      if (!usRelease?.release_dates) return false;
+      const certs = usRelease.release_dates.map(rd => rd.certification).filter(c => c && c.trim());
       return certs.some(c => c === "G" || c === "PG");
     } catch { return false; }
-  }
-
-  // Strict English-only filter: original_language must be "en"
-  function isEnglish(movie) {
-    return movie.original_language === "en";
   }
 
   async function fetchTrending() {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
-      // English only, 1985+
       const filtered = (data.results || []).filter(m => {
         const year = parseInt((m.release_date || "0").slice(0, 4));
-        return year >= 1985 && isEnglish(m);
+        return year >= 1985 && isAllowed(m);
       });
-      const toCheck = filtered.slice(0, 20);
-      const checked = await Promise.all(toCheck.map(async m => ({ ...m, _exclude: await shouldExcludeMovie(m.id) })));
-      setTrendingMovies(checked.filter(m => !m._exclude).slice(0, 12));
+      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
+      setTrendingMovies(checked.filter(m => !m._ex).slice(0, 12));
     } catch(e) {}
   }
 
@@ -176,14 +182,12 @@ export default function MovieTracker() {
     try {
       const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US`);
       const data = await res.json();
-      // English only, 1985+
       const filtered = (data.results || []).filter(m => {
         const year = parseInt((m.release_date || "0").slice(0, 4));
-        return year >= 1985 && isEnglish(m);
+        return year >= 1985 && isAllowed(m);
       });
-      const toCheck = filtered.slice(0, 20);
-      const checked = await Promise.all(toCheck.map(async m => ({ ...m, _exclude: await shouldExcludeMovie(m.id) })));
-      setSearchResults(checked.filter(m => !m._exclude));
+      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
+      setSearchResults(checked.filter(m => !m._ex));
     } catch(e) {}
     setLoading(false);
   }
@@ -191,7 +195,7 @@ export default function MovieTracker() {
   async function fetchMovieDetails(movieId) {
     setLoading(true);
     try {
-      const [dRes, cRes, rRes, pRes, vRes, eRes] = await Promise.all([
+      const [dR,cR,rR,pR,vR,eR] = await Promise.all([
         fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${TMDB_API_KEY}&language=en-US`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${TMDB_API_KEY}`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
@@ -199,53 +203,48 @@ export default function MovieTracker() {
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/videos?api_key=${TMDB_API_KEY}&language=en-US`),
         fetch(`${TMDB_BASE_URL}/movie/${movieId}/external_ids?api_key=${TMDB_API_KEY}`),
       ]);
-      const details = await dRes.json();
-      const credits = await cRes.json();
-      const releaseDates = await rRes.json();
-      const providers = await pRes.json();
-      const videos = await vRes.json();
-      const externalIds = await eRes.json();
-      const usRating = releaseDates.results?.find(r => r.iso_3166_1 === 'US')?.release_dates?.[0]?.certification || "N/A";
-      const trailerVideos = videos.results?.filter(v => v.site === 'YouTube' && v.type === 'Trailer') || [];
-      const teaserVideos = videos.results?.filter(v => v.site === 'YouTube' && v.type === 'Teaser') || [];
-      const officialTrailer = trailerVideos.find(v => v.name.toLowerCase().includes('official'));
-      const trailer = officialTrailer || trailerVideos[0] || teaserVideos[0] || null;
-      setSelectedMovie({ ...details, cast: credits.cast?.slice(0,5)||[], director: credits.crew?.find(p=>p.job==="Director"), maturity: usRating, trailer: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null, imdb_id: externalIds.imdb_id || null });
-      setStreamingProviders(providers.results?.[selectedCountry] || null);
-    } catch (e) { console.error("Failed to fetch movie details:", e); }
+      const details=await dR.json(), credits=await cR.json(), relDates=await rR.json();
+      const providers=await pR.json(), videos=await vR.json(), extIds=await eR.json();
+      const usRating = relDates.results?.find(r=>r.iso_3166_1==="US")?.release_dates?.[0]?.certification || "N/A";
+      const trailers = (videos.results||[]).filter(v=>v.site==="YouTube"&&v.type==="Trailer");
+      const teasers  = (videos.results||[]).filter(v=>v.site==="YouTube"&&v.type==="Teaser");
+      const trailer = trailers.find(v=>v.name.toLowerCase().includes("official")) || trailers[0] || teasers[0] || null;
+      setSelectedMovie({ ...details, cast:credits.cast?.slice(0,5)||[], director:credits.crew?.find(p=>p.job==="Director"), maturity:usRating, trailer:trailer?`https://www.youtube.com/watch?v=${trailer.key}`:null, imdb_id:extIds.imdb_id||null });
+      setStreamingProviders(providers.results?.[selectedCountry]||null);
+    } catch(e) {}
     setLoading(false);
   }
 
   // --- List Helpers --------------------------------------------------------
   function addMovieToPerson(movie, num) {
-    const list = num===1 ? person1Movies : person2Movies;
+    const list = num===1?person1Movies:person2Movies;
     if (list.some(m=>m.id===movie.id)) return;
-    if (num===1) setPerson1Movies([...list, movie]); else setPerson2Movies([...list, movie]);
+    if (num===1) setPerson1Movies([...list,movie]); else setPerson2Movies([...list,movie]);
   }
   function removeMovieFromPerson(id, num) {
     const updated = (num===1?person1Movies:person2Movies).filter(m=>m.id!==id);
     if (num===1) setPerson1Movies(updated); else setPerson2Movies(updated);
   }
-  const isInPerson1 = (id) => person1Movies.some(m=>m.id===id);
-  const isInPerson2 = (id) => person2Movies.some(m=>m.id===id);
-  const commonMovies = (() => { const ids = new Set(person1Movies.map(m=>m.id)); return person2Movies.filter(m=>ids.has(m.id)); })();
+  const isInPerson1 = id => person1Movies.some(m=>m.id===id);
+  const isInPerson2 = id => person2Movies.some(m=>m.id===id);
+  const commonMovies = (() => { const s = new Set(person1Movies.map(m=>m.id)); return person2Movies.filter(m=>s.has(m.id)); })();
 
   // --- Compatibility -------------------------------------------------------
   function calcCompatibilityScore() {
-    if (!person1Movies.length || !person2Movies.length) return null;
-    const p1G = countGenres(person1Movies), p2G = countGenres(person2Movies);
+    if (!person1Movies.length||!person2Movies.length) return null;
+    const p1G=countGenres(person1Movies), p2G=countGenres(person2Movies);
     const all = new Set([...Object.keys(p1G),...Object.keys(p2G)]);
     const common = [...all].filter(g=>p1G[g]&&p2G[g]);
-    const base = all.size>0 ? (common.length/all.size)*100 : 0;
-    const movieBonus = Math.min(commonMovies.length*5, 20);
-    const avg = (l) => l.reduce((s,m)=>s+(m.vote_average||0),0)/l.length;
+    const base = all.size>0?(common.length/all.size)*100:0;
+    const movieBonus = Math.min(commonMovies.length*5,20);
+    const avg = l => l.reduce((s,m)=>s+(m.vote_average||0),0)/l.length;
     const ratingBonus = Math.max(10-Math.abs(avg(person1Movies)-avg(person2Movies))*2,0);
     return Math.min(Math.round(base+movieBonus+ratingBonus),100);
   }
   function getCompatibilityDetails() {
     const p1G=countGenres(person1Movies), p2G=countGenres(person2Movies);
     const all = new Set([...Object.keys(p1G),...Object.keys(p2G)]);
-    const sharedGenres = [...all].filter(g=>p1G[g]&&p2G[g]).map(id=>({ id, name:GENRE_NAMES[id]||"Unknown", p1:p1G[id], p2:p2G[id], total:p1G[id]+p2G[id] })).sort((a,b)=>b.total-a.total);
+    const sharedGenres = [...all].filter(g=>p1G[g]&&p2G[g]).map(id=>({id,name:GENRE_NAMES[id]||"Unknown",p1:p1G[id],p2:p2G[id],total:p1G[id]+p2G[id]})).sort((a,b)=>b.total-a.total);
     const score = compatibilityScore||0;
     const insights = [];
     if (score>=80) insights.push("🎉 Excellent match! You have very similar movie tastes.");
@@ -254,150 +253,112 @@ export default function MovieTracker() {
     else insights.push("🌟 Diverse tastes! This means more variety in your movie nights.");
     if (commonMovies.length>0) insights.push(`You've both added ${commonMovies.length} of the same movie${commonMovies.length>1?"s":""}!`);
     if (sharedGenres.length>0) insights.push(`You both love ${sharedGenres[0].name} movies!`);
-    return { score, sharedGenres, insights };
+    return {score,sharedGenres,insights};
   }
 
   // --- Recommendations -----------------------------------------------------
-  const generateRecommendations = useCallback(async () => {
-    // Need at least one movie in each list
-    if (person1Movies.length === 0 || person2Movies.length === 0) {
-      setRecommendations([]);
-      return;
-    }
-
+  // This is the SINGLE async function. It reads current state directly via the
+  // closure at call-time — we call it both from useEffect AND from button clicks.
+  async function doFetchRecommendations(p1, p2, togetherMode) {
+    if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
 
-    const p1G = countGenres(person1Movies);
-    const p2G = countGenres(person2Movies);
-
-    // Shared genres: genres that appear in BOTH lists, sorted by total count
-    const sharedGenreIds = Object.keys(p1G)
-      .filter(g => p2G[g])
-      .sort((a, b) => (p1G[b] + p2G[b]) - (p1G[a] + p2G[a]));
-
-    // All genres from either list
-    const allGenreIds = [...new Set([...Object.keys(p1G), ...Object.keys(p2G)])]
-      .sort((a, b) => ((p1G[b]||0) + (p2G[b]||0)) - ((p1G[a]||0) + (p2G[a]||0)));
-
-    // IDs already in either list - never recommend these
-    const existingIds = new Set([...person1Movies, ...person2Movies].map(m => m.id));
+    const p1G = countGenres(p1);
+    const p2G = countGenres(p2);
+    const sharedGenreIds = Object.keys(p1G).filter(g=>p2G[g]).sort((a,b)=>(p1G[b]+p2G[b])-(p1G[a]+p2G[a]));
+    const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
+    const existingIds = new Set([...p1,...p2].map(m=>m.id));
 
     try {
       let rawResults = [];
 
-      if (togethernessMode) {
-        // ====== TOGETHERNESS: use shared genres only, AND logic via comma-separated ======
-        const genresToUse = sharedGenreIds.slice(0, 3);
+      if (togetherMode) {
+        // --- TOGETHERNESS: fetch each shared genre separately, reward overlap ---
+        const genresToUse = sharedGenreIds.slice(0,3);
         if (genresToUse.length === 0) {
-          // Fallback: top-rated crowd pleasers
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=10000&vote_average.gte=7.5&primary_release_date.gte=1990-01-01`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=5000&vote_average.gte=7.5&primary_release_date.gte=1990-01-01`);
           rawResults = (await res.json()).results || [];
         } else {
-          // Fetch page 1 and page 2 for each shared genre individually, then intersect
-          const perGenre = await Promise.all(genresToUse.map(async (gid) => {
-            const pages = await Promise.all([1,2].map(pg =>
+          const perGenre = await Promise.all(genresToUse.map(async gid => {
+            const pages = await Promise.all([1,2].map(pg=>
               fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1990-01-01&page=${pg}`)
                 .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
             ));
             return pages.flat();
           }));
-
-          // Build a frequency map: how many of the shared genres does each movie appear in?
           const freqMap = new Map();
-          perGenre.forEach(genreList => {
-            genreList.forEach(m => {
-              if (!freqMap.has(m.id)) freqMap.set(m.id, { movie: m, count: 0 });
-              freqMap.get(m.id).count += 1;
-            });
+          perGenre.forEach(list => list.forEach(m => {
+            if (!freqMap.has(m.id)) freqMap.set(m.id,{movie:m,count:0});
+            freqMap.get(m.id).count++;
+          }));
+          freqMap.forEach(({movie,count}) => {
+            rawResults.push({...movie, _score: count*80 + (movie.vote_average||0)*10});
           });
-
-          // Score: heavily reward appearing in multiple shared-genre pools
-          freqMap.forEach(({ movie, count }) => {
-            let score = count * 60; // each shared genre pool hit = +60
-            score += (movie.vote_average || 0) * 8;
-            const yr = parseInt((movie.release_date || "0").slice(0,4));
-            if (yr >= 2020) score += 25;
-            else if (yr >= 2015) score += 12;
-            rawResults.push({ ...movie, _score: score });
-          });
-
-          rawResults.sort((a,b) => b._score - a._score);
+          rawResults.sort((a,b)=>b._score-a._score);
         }
       } else {
-        // ====== NORMAL MODE: broad, use ALL genres from both lists, OR logic ======
-        const genresToUse = allGenreIds.slice(0, 6);
+        // --- NORMAL MODE: pipe = OR on TMDB, broad variety ---
+        const genresToUse = allGenreIds.slice(0,6);
         if (genresToUse.length === 0) {
           const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=2000&vote_average.gte=6.5&primary_release_date.gte=1990-01-01`);
           rawResults = (await res.json()).results || [];
         } else {
-          // OR logic: genres joined by comma, fetch 2 pages for variety
-          const gStr = genresToUse.join(",");
-          const pages = await Promise.all([1,2].map(pg =>
+          const gStr = genresToUse.join("|");  // pipe = OR in TMDB
+          const pages = await Promise.all([1,2,3].map(pg=>
             fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1990-01-01&page=${pg}`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
           ));
-          const pool = pages.flat();
-
-          // Light scoring
-          pool.forEach(m => {
-            let score = (m.popularity || 0) / 5;
-            score += (m.vote_average || 0) * 4;
-            (m.genre_ids || []).forEach(g => {
-              if (p1G[g]) score += 8;
-              if (p2G[g]) score += 8;
-            });
-            rawResults.push({ ...m, _score: score });
+          pages.flat().forEach(m => {
+            let score = (m.popularity||0)/5 + (m.vote_average||0)*4;
+            (m.genre_ids||[]).forEach(g => { if(p1G[g]) score+=10; if(p2G[g]) score+=10; });
+            rawResults.push({...m, _score:score});
           });
-
-          rawResults.sort((a,b) => b._score - a._score);
+          rawResults.sort((a,b)=>b._score-a._score);
         }
       }
 
-      // ====== DEDUPLICATE by movie ID, enforce English, remove already-added ======
+      // --- Dedup + isAllowed + skip already-added ---
       const seen = new Set();
-      const dedupedPool = [];
+      const pool = [];
       for (const m of rawResults) {
-        if (seen.has(m.id)) continue;          // skip duplicate IDs
-        if (existingIds.has(m.id)) continue;    // skip already in a list
-        if (!isEnglish(m)) continue;            // English only
+        if (seen.has(m.id)) continue;
+        if (existingIds.has(m.id)) continue;
+        if (!isAllowed(m)) continue;
         seen.add(m.id);
-        dedupedPool.push(m);
+        pool.push(m);
       }
 
-      // ====== G/PG filter: check up to 20, collect 12 ======
+      // --- G/PG filter: check ALL candidates until we have 12 clean ones (cap at 40 checks) ---
       const final = [];
       let checked = 0;
-      for (const movie of dedupedPool) {
+      for (const movie of pool) {
         if (final.length >= 12) break;
-        if (checked < 20) {
-          const exclude = await shouldExcludeMovie(movie.id);
-          checked++;
-          if (!exclude) final.push(movie);
-        } else {
-          final.push(movie); // stop checking after 20 to save API calls
-        }
+        if (checked >= 40) break;  // safety cap
+        const exclude = await shouldExcludeMovie(movie.id);
+        checked++;
+        if (!exclude) final.push(movie);
       }
 
       setRecommendations(final);
-    } catch (e) {
-      console.error("Recommendations error:", e);
+    } catch(e) {
+      console.error("Recs error:", e);
       setRecommendations([]);
     }
     setLoading(false);
-  }, [person1Movies, person2Movies, togethernessMode]);
+  }
 
-  // Auto-run when lists or mode change AND we're on the For You tab
+  // useEffect: fires whenever the lists, mode, or recsKey changes while on the tab
   useEffect(() => {
-    if (activeTab === "recommendations") {
-      generateRecommendations();
+    if (activeTab === "recommendations" && person1Movies.length > 0 && person2Movies.length > 0) {
+      doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
-  }, [person1Movies, person2Movies, togethernessMode, activeTab, generateRecommendations]);
+  }, [person1Movies, person2Movies, togethernessMode, activeTab, recsKey]);
 
   // ===========================================================================
   // SUB-COMPONENTS
   // ===========================================================================
 
-  const MovieCard = ({ movie, onSelect, showActions=false, personNum=null }) => (
+  const MovieCard = ({movie,onSelect,showActions=false,personNum=null}) => (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
@@ -430,11 +391,11 @@ export default function MovieTracker() {
   );
 
   // --- MovieModal ----------------------------------------------------------
-  const MovieModal = ({ movie, onClose }) => {
+  const MovieModal = ({movie,onClose}) => {
     if (!movie) return null;
-    const cur = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0];
-    const { flatrate, rent, buy, link: jwLink } = streamingProviders || {};
-    const ProviderRow = ({ label, providers }) => {
+    const cur = COUNTRIES.find(c=>c.code===selectedCountry)||COUNTRIES[0];
+    const {flatrate,rent,buy,link:jwLink} = streamingProviders||{};
+    const ProviderRow = ({label,providers}) => {
       if (!providers?.length) return null;
       return (
         <div className="mb-5">
@@ -475,10 +436,10 @@ export default function MovieTracker() {
                   <h2 className="text-2xl md:text-4xl font-bold text-white mb-2 leading-tight">{movie.title}</h2>
                   {movie.tagline && <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>}
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-5">
-                    {movie.vote_average>0 && (<div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold"><Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}</div>)}
+                    {movie.vote_average>0 && <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold"><Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}</div>}
                     <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
                     {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
-                    {movie.maturity && movie.maturity!=="N/A" && <span className={`text-xs font-semibold border px-2 py-0.5 rounded ${maturityColor}`}>{movie.maturity}</span>}
+                    {movie.maturity&&movie.maturity!=="N/A" && <span className={`text-xs font-semibold border px-2 py-0.5 rounded ${maturityColor}`}>{movie.maturity}</span>}
                   </div>
                   <div className="flex flex-wrap gap-3 justify-center md:justify-start mb-6">
                     {movie.trailer && <a href={movie.trailer} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-medium transition"><Play className="w-5 h-5"/>Watch Trailer</a>}
@@ -487,10 +448,9 @@ export default function MovieTracker() {
                     {!isInPerson2(movie.id) && <button onClick={()=>addMovieToPerson(movie,2)} className="bg-purple-600 hover:bg-purple-500 text-white px-5 py-2.5 rounded-lg font-medium transition">+ {person2Name}</button>}
                   </div>
                   <p className="text-zinc-300 leading-relaxed mb-6 max-w-3xl">{movie.overview}</p>
-                  {movie.genres?.length>0 && (<div className="flex flex-wrap gap-2 justify-center md:justify-start mb-6">{movie.genres.map(g=><span key={g.id} className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm">{g.name}</span>)}</div>)}
+                  {movie.genres?.length>0 && <div className="flex flex-wrap gap-2 justify-center md:justify-start mb-6">{movie.genres.map(g=><span key={g.id} className="bg-zinc-800 text-zinc-300 px-3 py-1 rounded-full text-sm">{g.name}</span>)}</div>}
                 </div>
               </div>
-              {/* Where to Watch */}
               <div className="bg-zinc-800/50 rounded-xl p-6 border border-zinc-700 mt-4">
                 <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                   <h3 className="text-lg font-semibold text-white flex items-center gap-2"><Play className="w-5 h-5 text-red-500"/>Where to Watch</h3>
@@ -511,7 +471,7 @@ export default function MovieTracker() {
                 <ProviderRow label="Buy" providers={buy}/>
                 {!flatrate&&!rent&&!buy && <p className="text-zinc-400 text-sm">No streaming options available in {cur.name}</p>}
                 {jwLink && <a href={jwLink} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition">View all options on JustWatch <ExternalLink className="w-4 h-4"/></a>}
-                <p className="text-xs text-zinc-600 mt-4">Streaming data provided by JustWatch • {cur.name}</p>
+                <p className="text-xs text-zinc-600 mt-4">Streaming data provided by JustWatch</p>
               </div>
             </div>
           </div>
@@ -525,13 +485,13 @@ export default function MovieTracker() {
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
         <h2 className="text-2xl font-bold mb-2 text-white">Save Your Lists</h2>
-        <p className="text-zinc-400 mb-2">Give your movie lists a name to save them</p>
-        <p className="text-yellow-500 text-sm mb-6">⚠️ Lists are only saved for this session</p>
+        <p className="text-zinc-400 mb-2">Give your movie lists a name</p>
+        <p className="text-yellow-500 text-sm mb-6">Note: Lists are only saved for this session</p>
         <input type="text" placeholder="e.g., Movie Night Favorites" value={listName} onChange={e=>setListName(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleSave()} className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500" autoFocus/>
         {saveMessage && <p className="text-sm mb-4 text-center text-zinc-300">{saveMessage}</p>}
         <div className="flex gap-3">
-          <button onClick={()=>{setShowSaveModal(false);setListName("");setSaveMessage("");}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Cancel</button>
-          <button onClick={handleSave} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium transition-colors">Save List</button>
+          <button onClick={()=>{setShowSaveModal(false);setListName("");setSaveMessage("");}} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium">Cancel</button>
+          <button onClick={handleSave} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white px-4 py-3 rounded-lg font-medium">Save List</button>
         </div>
       </div>
     </div>
@@ -550,21 +510,17 @@ export default function MovieTracker() {
             {savedLists.map(list=>(
               <div key={list.key} className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white mb-1">{list.name}</h3>
-                    <p className="text-sm text-zinc-400 mb-1">{list.person1Name} &amp; {list.person2Name}</p>
-                    <p className="text-xs text-zinc-500">{(list.person1Movies?.length||0)+(list.person2Movies?.length||0)} movies • Saved {new Date(list.savedAt).toLocaleDateString()}</p>
-                  </div>
+                  <div><h3 className="font-semibold text-white mb-1">{list.name}</h3><p className="text-sm text-zinc-400">{list.person1Name} &amp; {list.person2Name}</p><p className="text-xs text-zinc-500">{(list.person1Movies?.length||0)+(list.person2Movies?.length||0)} movies</p></div>
                   <div className="flex gap-2">
-                    <button onClick={()=>loadList(list.key)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Load</button>
-                    <button onClick={()=>deleteList(list.key)} className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm transition-colors"><X className="w-4 h-4"/></button>
+                    <button onClick={()=>loadList(list.key)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-medium">Load</button>
+                    <button onClick={()=>deleteList(list.key)} className="bg-red-600/20 hover:bg-red-600/30 text-red-400 px-3 py-2 rounded-lg text-sm"><X className="w-4 h-4"/></button>
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-        <button onClick={()=>setShowLoadModal(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Close</button>
+        <button onClick={()=>setShowLoadModal(false)} className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium">Close</button>
       </div>
     </div>
   );
@@ -572,37 +528,37 @@ export default function MovieTracker() {
   // --- CompatibilityModal --------------------------------------------------
   const CompatibilityModal = () => {
     const details = getCompatibilityDetails();
-    const maxListLen = Math.max(person1Movies.length, person2Movies.length, 1);
+    const maxListLen = Math.max(person1Movies.length,person2Movies.length,1);
     return (
       <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
         <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-3xl w-full max-h-[80vh] overflow-y-auto">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-3xl font-bold text-white flex items-center gap-3"><BarChart3 className="w-8 h-8 text-purple-400"/>Compatibility Analysis</h2>
-            <button onClick={()=>setShowCompatibilityModal(false)} className="bg-zinc-800 hover:bg-zinc-700 rounded-full p-2 transition-colors"><X className="w-5 h-5 text-white"/></button>
+            <button onClick={()=>setShowCompatibilityModal(false)} className="bg-zinc-800 hover:bg-zinc-700 rounded-full p-2"><X className="w-5 h-5 text-white"/></button>
           </div>
           <div className="rounded-xl p-8 mb-6 text-center border border-purple-800/30" style={{background:"linear-gradient(to right, rgba(88,28,135,0.5), rgba(134,25,83,0.5))"}}>
             <p className="text-zinc-400 text-sm mb-2">Your Compatibility Score</p>
-            <div className="text-7xl font-bold mb-2" style={{background:"linear-gradient(to right, #a78bfa, #f472b6)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>{details.score}%</div>
-            <div className="w-full bg-zinc-800 rounded-full h-4 mb-4"><div className="h-4 rounded-full transition-all duration-1000" style={{width:`${details.score}%`, background:"linear-gradient(to right, #7c3aed, #db2777)"}}/></div>
+            <div className="text-7xl font-bold mb-2" style={{background:"linear-gradient(to right, #a78bfa, #f472b6)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{details.score}%</div>
+            <div className="w-full bg-zinc-800 rounded-full h-4 mb-4"><div className="h-4 rounded-full" style={{width:`${details.score}%`,background:"linear-gradient(to right, #7c3aed, #db2777)"}}/></div>
             <div className="flex items-center justify-center gap-2 text-zinc-300">
-              {details.score>=80 ? <>🔥 <span>Perfect Match!</span></> : details.score>=60 ? <>✨ <span>Great Compatibility</span></> : details.score>=40 ? <>🎬 <span>Good Match</span></> : <>⚜️ <span>Diverse Tastes</span></>}
+              {details.score>=80?<>🔥 <span>Perfect Match!</span></>:details.score>=60?<>✨ <span>Great Compatibility</span></>:details.score>=40?<>🎬 <span>Good Match</span></>:<>⚜️ <span>Diverse Tastes</span></>}
             </div>
           </div>
           <div className="mb-6">
             <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-yellow-400"/>Key Insights</h3>
-            <div className="space-y-2">{details.insights.map((insight,i)=><div key={i} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700"><p className="text-zinc-300">{insight}</p></div>)}</div>
+            <div className="space-y-2">{details.insights.map((i,idx)=><div key={idx} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700"><p className="text-zinc-300">{i}</p></div>)}</div>
           </div>
           {details.sharedGenres.length>0 && (
             <div className="mb-6">
               <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2"><Heart className="w-5 h-5 text-pink-400"/>Shared Genres</h3>
               <div className="grid grid-cols-2 gap-3">
-                {details.sharedGenres.map(genre=>(
-                  <div key={genre.id} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
+                {details.sharedGenres.map(g=>(
+                  <div key={g.id} className="bg-zinc-800/50 rounded-lg p-4 border border-zinc-700">
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-white">{genre.name}</h4>
-                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"/><span className="text-xs text-zinc-400">{genre.p1}</span><span className="text-zinc-600 mx-1">|</span><span className="text-xs text-zinc-400">{genre.p2}</span><div className="w-2 h-2 rounded-full bg-purple-500"/></div>
+                      <h4 className="font-semibold text-white">{g.name}</h4>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"/><span className="text-xs text-zinc-400">{g.p1}</span><span className="text-zinc-600 mx-1">|</span><span className="text-xs text-zinc-400">{g.p2}</span><div className="w-2 h-2 rounded-full bg-purple-500"/></div>
                     </div>
-                    <div className="w-full bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full" style={{width:`${Math.min((genre.total/maxListLen)*100,100)}%`, background:"linear-gradient(to right, #2563eb, #7c3aed)"}}/></div>
+                    <div className="w-full bg-zinc-700 rounded-full h-2"><div className="h-2 rounded-full" style={{width:`${Math.min((g.total/maxListLen)*100,100)}%`,background:"linear-gradient(to right, #2563eb, #7c3aed)"}}/></div>
                   </div>
                 ))}
               </div>
@@ -623,7 +579,7 @@ export default function MovieTracker() {
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
       <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-md w-full">
         <h2 className="text-2xl font-bold mb-2 text-white">Export Your Data</h2>
-        <p className="text-zinc-400 mb-6">Download all your movie lists as a file you can import later.</p>
+        <p className="text-zinc-400 mb-6">Download your movie lists as a file you can import later.</p>
         <div className="bg-zinc-800/50 rounded-lg p-4 mb-6 border border-zinc-700">
           <h3 className="text-white font-semibold mb-2">What will be exported:</h3>
           <ul className="text-zinc-300 text-sm space-y-1">
@@ -633,8 +589,8 @@ export default function MovieTracker() {
           </ul>
         </div>
         <div className="flex gap-3">
-          <button onClick={()=>setShowExportModal(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">Cancel</button>
-          <button onClick={exportData} className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"><ExternalLink className="w-5 h-5"/>Download File</button>
+          <button onClick={()=>setShowExportModal(false)} className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium">Cancel</button>
+          <button onClick={exportData} className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2"><ExternalLink className="w-5 h-5"/>Download</button>
         </div>
       </div>
     </div>
@@ -650,7 +606,7 @@ export default function MovieTracker() {
         <div className="mb-12">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-8">
             <div>
-              <h1 className="text-5xl font-bold mb-2" style={{background:"linear-gradient(to right, #ef4444, #a855f7)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>MovieMatch</h1>
+              <h1 className="text-5xl font-bold mb-2" style={{background:"linear-gradient(to right, #ef4444, #a855f7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>MovieMatch</h1>
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -661,7 +617,7 @@ export default function MovieTracker() {
               <button onClick={()=>setShowExportModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><ExternalLink className="w-5 h-5"/> Export</button>
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Film className="w-5 h-5"/> Save Lists</button>
               <button onClick={()=>setShowLoadModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Play className="w-5 h-5"/> Load Lists</button>
-              <button onClick={()=>{if(compatibilityScore!==null)setShowCompatibilityModal(true);}} disabled={person1Movies.length===0||person2Movies.length===0} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><BarChart3 className="w-5 h-5"/> {compatibilityScore!==null?`${compatibilityScore}%`:"Stats"}</button>
+              <button onClick={()=>{if(compatibilityScore!==null)setShowCompatibilityModal(true);}} disabled={!person1Movies.length||!person2Movies.length} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><BarChart3 className="w-5 h-5"/> {compatibilityScore!==null?`${compatibilityScore}%`:"Stats"}</button>
               <button onClick={()=>setTogethernessMode(!togethernessMode)} className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${togethernessMode?"text-white shadow-lg shadow-purple-500/50":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={togethernessMode?{background:"linear-gradient(to right, #db2777, #7c3aed)"}:{}}>
                 <Sparkles className="w-5 h-5" fill={togethernessMode?"currentColor":undefined}/> Togetherness
                 {compatibilityScore!==null&&togethernessMode && <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{compatibilityScore}%</span>}
@@ -669,23 +625,27 @@ export default function MovieTracker() {
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-4 mb-6">
-            <input type="text" value={person1Name} onChange={e=>setPerson1Name(e.target.value)} placeholder="First person's name" className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"/>
-            <input type="text" value={person2Name} onChange={e=>setPerson2Name(e.target.value)} placeholder="Second person's name" className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"/>
+            <input type="text" value={person1Name} onChange={e=>setPerson1Name(e.target.value)} placeholder="First person's name" className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"/>
+            <input type="text" value={person2Name} onChange={e=>setPerson2Name(e.target.value)} placeholder="Second person's name" className="bg-zinc-900 border border-zinc-800 text-white px-6 py-4 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"/>
           </div>
           <div className="relative">
             <Search className="absolute left-6 text-zinc-500 w-5 h-5" style={{top:"50%",transform:"translateY(-50%)"}}/>
-            <input type="text" placeholder="Search for movies..." value={searchQuery} onChange={e=>{setSearchQuery(e.target.value);searchMovies(e.target.value);}} className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all text-lg"/>
+            <input type="text" placeholder="Search for movies..." value={searchQuery} onChange={e=>{setSearchQuery(e.target.value);searchMovies(e.target.value);}} className="w-full bg-zinc-900 border border-zinc-800 text-white pl-14 pr-6 py-5 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-lg"/>
           </div>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-3 mb-8 border-b border-zinc-800">
           {[
-            { id:"search", icon:Search, label:"Discover" },
-            { id:"compare", icon:Users, label:"Your Lists" },
-            { id:"recommendations", icon:Heart, label:"For You" },
+            {id:"search",icon:Search,label:"Discover"},
+            {id:"compare",icon:Users,label:"Your Lists"},
+            {id:"recommendations",icon:Heart,label:"For You"},
           ].map(tab=>(
-            <button key={tab.id} onClick={()=>{setActiveTab(tab.id);if(tab.id==="recommendations")generateRecommendations();}} className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${activeTab===tab.id?"bg-zinc-900 text-white border-b-2 border-red-500":"text-zinc-500 hover:text-zinc-300"}`}>
+            <button key={tab.id} onClick={()=>{
+              setActiveTab(tab.id);
+              // When clicking "For You", bump the key so useEffect always fires
+              if (tab.id==="recommendations") setRecsKey(k=>k+1);
+            }} className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${activeTab===tab.id?"bg-zinc-900 text-white border-b-2 border-red-500":"text-zinc-500 hover:text-zinc-300"}`}>
               <tab.icon className="w-5 h-5"/> {tab.label}
               {tab.id==="compare"&&commonMovies.length>0 && <span className="bg-pink-600 text-white text-xs px-2 py-0.5 rounded-full">{commonMovies.length}</span>}
             </button>
@@ -738,8 +698,8 @@ export default function MovieTracker() {
           <div className="space-y-6">
             {togethernessMode && (
               <div className="rounded-2xl p-8 border border-pink-900/20" style={{background:"linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))"}}>
-                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Sparkles className="w-7 h-7 text-yellow-400"/>✨ Togetherness Mode Active</h2>
-                <p className="text-zinc-300">Finding movies that match genres you <strong>both</strong> enjoy. Results are stricter and more focused.</p>
+                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Sparkles className="w-7 h-7 text-yellow-400"/>Togetherness Mode Active</h2>
+                <p className="text-zinc-300">Finding movies that match genres you <strong>both</strong> enjoy.</p>
               </div>
             )}
             {!togethernessMode && person1Movies.length>0 && person2Movies.length>0 && (
@@ -750,7 +710,7 @@ export default function MovieTracker() {
             <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
               <p className="text-zinc-400 mb-6">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
-              <button onClick={generateRecommendations} className="text-white font-semibold px-6 py-3 rounded-xl transition-all" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
+              <button onClick={()=>{ setRecsKey(k=>k+1); }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
