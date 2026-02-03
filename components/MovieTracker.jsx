@@ -306,12 +306,14 @@ export default function MovieTracker() {
       if (p2G[g]) p2Score += p2G[g];
     });
     if (p1Score === 0 && p2Score === 0) return null;
-    if (Math.abs(p1Score - p2Score) <= 1) return "both"; // nearly equal
-    return p1Score > p2Score ? "person1" : "person2";
+    const match = Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
+    console.log(`🎯 Match for "${movie.title}":`, match, { p1Score, p2Score });
+    return match;
   }
 
   // --- Recommendations -----------------------------------------------------
   async function doFetchRecommendations(p1, p2, togetherMode) {
+    console.log("🔄 Fetching recommendations...", { p1Count: p1.length, p2Count: p2.length, togetherMode });
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
 
@@ -417,6 +419,7 @@ export default function MovieTracker() {
 
       // Re-sort by finalScore after streaming adjustments
       final.sort((a, b) => b._finalScore - a._finalScore);
+      console.log("✅ Recommendations ready:", final.length);
       setRecommendations(final);
     } catch(e) {
       console.error("Recs error:", e);
@@ -426,6 +429,7 @@ export default function MovieTracker() {
   }
 
   useEffect(() => {
+    console.log("📊 Recs useEffect triggered", { recsKey, p1: person1Movies.length, p2: person2Movies.length });
     if (person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
@@ -456,7 +460,7 @@ export default function MovieTracker() {
         )}
         {/* Match indicator badge */}
         {matchIndicator && (
-          <div className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${
+          <div className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${ 
             matchIndicator === "person1" ? "bg-blue-600/90" :
             matchIndicator === "person2" ? "bg-purple-600/90" :
             "bg-pink-600/90"
@@ -470,6 +474,18 @@ export default function MovieTracker() {
         )}
       </div>
       <div className="p-4">
+        {/* Show match indicator as text label too for clarity */}
+        {matchIndicator && (
+          <div className={`text-xs font-semibold mb-2 ${
+            matchIndicator === "person1" ? "text-blue-400" :
+            matchIndicator === "person2" ? "text-purple-400" :
+            "text-pink-400"
+          }`}>
+            {matchIndicator === "person1" ? `For ${person1Name.split(" ")[0]}` :
+             matchIndicator === "person2" ? `For ${person2Name.split(" ")[0]}` :
+             "For Both"}
+          </div>
+        )}
         <h3 className="font-semibold text-white text-sm mb-1" style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{movie.title}</h3>
         <p className="text-zinc-500 text-xs mb-3">{movie.release_date?.split("-")[0]||"N/A"}</p>
         {showActions && (
@@ -814,7 +830,15 @@ export default function MovieTracker() {
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
               <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
-              <button onClick={()=>{ setRecommendations([]); setRecsKey(k=>k+1); }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
+              <button onClick={()=>{ 
+                console.log("🔄 Refresh button clicked");
+                setRecommendations([]);
+                setLoading(true);
+                setRecsKey(k => {
+                  console.log("🔑 recsKey incrementing from", k, "to", k+1);
+                  return k+1;
+                });
+              }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null}/>)}</div>
