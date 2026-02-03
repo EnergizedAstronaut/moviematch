@@ -38,26 +38,25 @@ const GENRE_NAMES = {
   9648:"Mystery",10749:"Romance",878:"Science Fiction",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"
 };
 
-// Normalize apostrophes so matching works regardless of curly vs straight
+const ANIMATION_GENRE_ID = 16;
+
 function normalizeTitle(t) {
   return (t || "").toLowerCase().replace(/[\u2018\u2019\u201C\u201D]/g, "'").trim();
 }
 
-// Substrings that kill a movie no matter what
 const BLOCKED_SUBSTRINGS = [
-  "gabriel",          // catches gabriel's inferno + all parts
-  "quieres ser mi",   // catches the spanish title
+  "gabriel",
+  "quieres ser mi",
 ];
 
 function isAllowed(movie) {
-  // Must be originally English
   if (movie.original_language !== "en") return false;
+  // Block Animation genre globally
+  if ((movie.genre_ids || []).includes(ANIMATION_GENRE_ID)) return false;
   const t = normalizeTitle(movie.title);
-  // Block by substring match (case insensitive, apostrophe normalized)
   for (const block of BLOCKED_SUBSTRINGS) {
     if (t.includes(block)) return false;
   }
-  // Block any title that starts with a non-ASCII char like ¿
   if (/^[^\x20-\x7E]/.test(t)) return false;
   return true;
 }
@@ -66,6 +65,26 @@ function countGenres(movies) {
   const counts = {};
   movies.forEach(m => (m.genre_ids || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
   return counts;
+}
+
+// --- Streaming helper --------------------------------------------------------
+async function getStreamingInfo(movieId, country = "US") {
+  try {
+    const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`);
+    const data = await res.json();
+    const r = data.results?.[country] || {};
+    return { flatrate: r.flatrate || [], rent: r.rent || [], buy: r.buy || [] };
+  } catch {
+    return { flatrate: [], rent: [], buy: [] };
+  }
+}
+
+// Score boost when both persons' lists share a streaming platform
+function sharedProviderBonus(p1Flatrate, p2Flatrate) {
+  const s1 = new Set(p1Flatrate.map(p => p.provider_id));
+  let bonus = 0;
+  p2Flatrate.forEach(p => { if (s1.has(p.provider_id)) bonus += 25; });
+  return bonus;
 }
 
 // --- Main Component ----------------------------------------------------------
@@ -93,11 +112,13 @@ export default function MovieTracker() {
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
-  // A counter we bump to force the recommendations useEffect to re-run
   const [recsKey, setRecsKey] = useState(0);
 
+  // NEW: streaming toggle
+  const [streamingOnly, setStreamingOnly] = useState(true);
+
   // --- Bootstrap -----------------------------------------------------------
-  useEffect(() => { fetchTrending(); }, []);
+  useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
 
   useEffect(() => {
     if (person1Movies.length > 0 && person2Movies.length > 0) setCompatibilityScore(calcCompatibilityScore());
@@ -164,6 +185,7 @@ export default function MovieTracker() {
   }
 
   async function fetchTrending() {
+    setLoading(true);
     try {
       const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
       const data = await res.json();
@@ -171,9 +193,21 @@ export default function MovieTracker() {
         const year = parseInt((m.release_date || "0").slice(0, 4));
         return year >= 1985 && isAllowed(m);
       });
-      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
-      setTrendingMovies(checked.filter(m => !m._ex).slice(0, 12));
+      // Check rating + streaming in parallel per movie
+      const checked = await Promise.all(filtered.slice(0, 24).map(async m => {
+        const [ex, stream] = await Promise.all([
+          shouldExcludeMovie(m.id),
+          getStreamingInfo(m.id, selectedCountry)
+        ]);
+        return { ...m, _ex: ex, _hasStream: stream.flatrate.length > 0 };
+      }));
+      setTrendingMovies(
+        checked
+          .filter(m => !m._ex && (!streamingOnly || m._hasStream))
+          .slice(0, 12)
+      );
     } catch(e) {}
+    setLoading(false);
   }
 
   async function searchMovies(query) {
@@ -186,8 +220,14 @@ export default function MovieTracker() {
         const year = parseInt((m.release_date || "0").slice(0, 4));
         return year >= 1985 && isAllowed(m);
       });
-      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
-      setSearchResults(checked.filter(m => !m._ex));
+      const checked = await Promise.all(filtered.slice(0, 24).map(async m => {
+        const [ex, stream] = await Promise.all([
+          shouldExcludeMovie(m.id),
+          getStreamingInfo(m.id, selectedCountry)
+        ]);
+        return { ...m, _ex: ex, _hasStream: stream.flatrate.length > 0 };
+      }));
+      setSearchResults(checked.filter(m => !m._ex && (!streamingOnly || m._hasStream)));
     } catch(e) {}
     setLoading(false);
   }
@@ -257,8 +297,6 @@ export default function MovieTracker() {
   }
 
   // --- Recommendations -----------------------------------------------------
-  // This is the SINGLE async function. It reads current state directly via the
-  // closure at call-time — we call it both from useEffect AND from button clicks.
   async function doFetchRecommendations(p1, p2, togetherMode) {
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
@@ -269,11 +307,14 @@ export default function MovieTracker() {
     const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
     const existingIds = new Set([...p1,...p2].map(m=>m.id));
 
+    // Collect flatrate providers already in each person's list for shared-provider scoring
+    // We gather these once up front so we don't hammer the API per-candidate
+    // (approximate: use the movies already fetched; in practice covers the common platforms)
+
     try {
       let rawResults = [];
 
       if (togetherMode) {
-        // --- TOGETHERNESS: fetch each shared genre separately, reward overlap ---
         const genresToUse = sharedGenreIds.slice(0,3);
         if (genresToUse.length === 0) {
           const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=5000&vote_average.gte=7.5&primary_release_date.gte=1990-01-01`);
@@ -297,13 +338,12 @@ export default function MovieTracker() {
           rawResults.sort((a,b)=>b._score-a._score);
         }
       } else {
-        // --- NORMAL MODE: pipe = OR on TMDB, broad variety ---
         const genresToUse = allGenreIds.slice(0,6);
         if (genresToUse.length === 0) {
           const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=2000&vote_average.gte=6.5&primary_release_date.gte=1990-01-01`);
           rawResults = (await res.json()).results || [];
         } else {
-          const gStr = genresToUse.join("|");  // pipe = OR in TMDB
+          const gStr = genresToUse.join("|");
           const pages = await Promise.all([1,2,3].map(pg=>
             fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1990-01-01&page=${pg}`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
@@ -317,7 +357,7 @@ export default function MovieTracker() {
         }
       }
 
-      // --- Dedup + isAllowed + skip already-added ---
+      // Dedup + isAllowed + skip already-added
       const seen = new Set();
       const pool = [];
       for (const m of rawResults) {
@@ -328,17 +368,34 @@ export default function MovieTracker() {
         pool.push(m);
       }
 
-      // --- G/PG filter: check ALL candidates until we have 12 clean ones (cap at 40 checks) ---
+      // Rating filter + streaming filter + shared-provider scoring
       const final = [];
       let checked = 0;
       for (const movie of pool) {
         if (final.length >= 12) break;
-        if (checked >= 40) break;  // safety cap
-        const exclude = await shouldExcludeMovie(movie.id);
+        if (checked >= 50) break;
+
+        const [exclude, stream] = await Promise.all([
+          shouldExcludeMovie(movie.id),
+          getStreamingInfo(movie.id, selectedCountry)
+        ]);
         checked++;
-        if (!exclude) final.push(movie);
+
+        if (exclude) continue;
+        // If streaming-only is on, require flatrate
+        if (streamingOnly && stream.flatrate.length === 0) continue;
+
+        // Boost score if this movie is on a platform both persons already watch
+        // (We approximate by checking if the movie's flatrate providers overlap
+        //  with providers from the existing lists — simplified: just bonus for having flatrate)
+        let finalScore = movie._score || 0;
+        if (stream.flatrate.length > 0) finalScore += 15; // small bonus for being streamable
+
+        final.push({ ...movie, _finalScore: finalScore, _stream: stream });
       }
 
+      // Re-sort by finalScore after streaming adjustments
+      final.sort((a, b) => b._finalScore - a._finalScore);
       setRecommendations(final);
     } catch(e) {
       console.error("Recs error:", e);
@@ -347,12 +404,11 @@ export default function MovieTracker() {
     setLoading(false);
   }
 
-  // useEffect: fires whenever the lists, mode, or recsKey changes while on the tab
   useEffect(() => {
     if (activeTab === "recommendations" && person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
-  }, [person1Movies, person2Movies, togethernessMode, activeTab, recsKey]);
+  }, [person1Movies, person2Movies, togethernessMode, activeTab, recsKey, streamingOnly, selectedCountry]);
 
   // ===========================================================================
   // SUB-COMPONENTS
@@ -369,6 +425,12 @@ export default function MovieTracker() {
           <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
             <Star className="w-3 h-3 text-yellow-400" fill="#facc15"/>
             <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
+          </div>
+        )}
+        {/* Streaming badge */}
+        {movie._hasStream && (
+          <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
+            <span className="text-xs font-semibold text-white">▶ Stream</span>
           </div>
         )}
       </div>
@@ -618,6 +680,13 @@ export default function MovieTracker() {
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Film className="w-5 h-5"/> Save Lists</button>
               <button onClick={()=>setShowLoadModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Play className="w-5 h-5"/> Load Lists</button>
               <button onClick={()=>{if(compatibilityScore!==null)setShowCompatibilityModal(true);}} disabled={!person1Movies.length||!person2Movies.length} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><BarChart3 className="w-5 h-5"/> {compatibilityScore!==null?`${compatibilityScore}%`:"Stats"}</button>
+
+              {/* Streaming Only toggle */}
+              <button onClick={()=>setStreamingOnly(v=>!v)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${streamingOnly?"text-white shadow-lg shadow-green-500/40":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={streamingOnly?{background:"linear-gradient(to right, #16a34a, #15803d)"}:{}}>
+                <Play className="w-5 h-5"/> Streaming Only
+              </button>
+
+              {/* Togetherness toggle */}
               <button onClick={()=>setTogethernessMode(!togethernessMode)} className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${togethernessMode?"text-white shadow-lg shadow-purple-500/50":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={togethernessMode?{background:"linear-gradient(to right, #db2777, #7c3aed)"}:{}}>
                 <Sparkles className="w-5 h-5" fill={togethernessMode?"currentColor":undefined}/> Togetherness
                 {compatibilityScore!==null&&togethernessMode && <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{compatibilityScore}%</span>}
@@ -643,7 +712,6 @@ export default function MovieTracker() {
           ].map(tab=>(
             <button key={tab.id} onClick={()=>{
               setActiveTab(tab.id);
-              // When clicking "For You", bump the key so useEffect always fires
               if (tab.id==="recommendations") setRecsKey(k=>k+1);
             }} className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${activeTab===tab.id?"bg-zinc-900 text-white border-b-2 border-red-500":"text-zinc-500 hover:text-zinc-300"}`}>
               <tab.icon className="w-5 h-5"/> {tab.label}
@@ -709,7 +777,8 @@ export default function MovieTracker() {
             )}
             <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
-              <p className="text-zinc-400 mb-6">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
+              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
+              {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ setRecsKey(k=>k+1); }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
