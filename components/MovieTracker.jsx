@@ -31,7 +31,7 @@ const COUNTRIES = [
   {code:"MX",name:"Mexico",flag:"🇲🇽"},{code:"BR",name:"Brazil",flag:"🇧🇷"},
   {code:"IN",name:"India",flag:"🇮🇳"},{code:"JP",name:"Japan",flag:"🇯🇵"},
 ];
-
+const ANIMATION_GENRE_ID = 16;
 const GENRE_NAMES = {
   28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",
   18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",
@@ -57,6 +57,8 @@ function isAllowed(movie) {
   for (const block of BLOCKED_SUBSTRINGS) {
     if (t.includes(block)) return false;
   }
+   // ❌ Remove Animation everywhere
+  if (movie.genre_ids?.includes(ANIMATION_GENRE_ID)) return false;
   // Block any title that starts with a non-ASCII char like ¿
   if (/^[^\x20-\x7E]/.test(t)) return false;
   return true;
@@ -66,6 +68,29 @@ function countGenres(movies) {
   const counts = {};
   movies.forEach(m => (m.genre_ids || []).forEach(id => { counts[id] = (counts[id] || 0) + 1; }));
   return counts;
+}
+
+/** 🎬 Streaming info */
+async function getStreamingInfo(movieId, country = "US") {
+  try {
+    const res = await fetch(
+      `${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`
+    );
+    const data = await res.json();
+    const r = data.results?.[country] || {};
+    return {
+      flatrate: r.flatrate || [],
+      rent: r.rent || [],
+      buy: r.buy || [],
+    };
+  } catch {
+    return { flatrate: [], rent: [], buy: [] };
+  }
+}
+
+async function hasStreaming(movieId, country) {
+  const s = await getStreamingInfo(movieId, country);
+  return s.flatrate.length > 0;
 }
 
 // --- Main Component ----------------------------------------------------------
@@ -93,6 +118,8 @@ export default function MovieTracker() {
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  /** 🎬 NEW */
+  const [streamingOnly, setStreamingOnly] = useState(true);
   // A counter we bump to force the recommendations useEffect to re-run
   const [recsKey, setRecsKey] = useState(0);
 
@@ -163,34 +190,68 @@ export default function MovieTracker() {
     } catch { return false; }
   }
 
-  async function fetchTrending() {
-    try {
-      const res = await fetch(`${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`);
-      const data = await res.json();
-      const filtered = (data.results || []).filter(m => {
-        const year = parseInt((m.release_date || "0").slice(0, 4));
-        return year >= 1985 && isAllowed(m);
-      });
-      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
-      setTrendingMovies(checked.filter(m => !m._ex).slice(0, 12));
-    } catch(e) {}
-  }
-
-  async function searchMovies(query) {
-    if (!query.trim()) { setSearchResults([]); return; }
+ async function fetchTrending() {
     setLoading(true);
     try {
-      const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&language=en-US`);
+      const res = await fetch(
+        `${TMDB_BASE_URL}/trending/movie/week?api_key=${TMDB_API_KEY}`
+      );
       const data = await res.json();
-      const filtered = (data.results || []).filter(m => {
-        const year = parseInt((m.release_date || "0").slice(0, 4));
-        return year >= 1985 && isAllowed(m);
+
+      const base = (data.results || []).filter(m => {
+        const y = parseInt((m.release_date || "0").slice(0, 4));
+        return y >= 1985 && isAllowed(m);
       });
-      const checked = await Promise.all(filtered.slice(0, 20).map(async m => ({ ...m, _ex: await shouldExcludeMovie(m.id) })));
-      setSearchResults(checked.filter(m => !m._ex));
-    } catch(e) {}
+
+      const checked = await Promise.all(
+        base.slice(0, 30).map(async m => ({
+          ...m,
+          _stream: await hasStreaming(m.id, selectedCountry),
+        }))
+      );
+
+      setTrendingMovies(
+        checked.filter(m => !streamingOnly || m._stream).slice(0, 12)
+      );
+    } catch {}
     setLoading(false);
   }
+
+
+ async function searchMovies(q) {
+    if (!q.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(
+          q
+        )}&language=en-US`
+      );
+      const data = await res.json();
+
+      const base = (data.results || []).filter(m => {
+        const y = parseInt((m.release_date || "0").slice(0, 4));
+        return y >= 1985 && isAllowed(m);
+      });
+
+      const checked = await Promise.all(
+        base.slice(0, 30).map(async m => ({
+          ...m,
+          _stream: await hasStreaming(m.id, selectedCountry),
+        }))
+      );
+
+      setSearchResults(
+        checked.filter(m => !streamingOnly || m._stream)
+      );
+    } catch {}
+    setLoading(false);
+  }
+
 
   async function fetchMovieDetails(movieId) {
     setLoading(true);
@@ -259,15 +320,106 @@ export default function MovieTracker() {
   // --- Recommendations -----------------------------------------------------
   // This is the SINGLE async function. It reads current state directly via the
   // closure at call-time — we call it both from useEffect AND from button clicks.
-  async function doFetchRecommendations(p1, p2, togetherMode) {
-    if (!p1.length || !p2.length) { setRecommendations([]); return; }
+ 
+  async function doFetchRecommendations() {
+    if (!person1Movies.length || !person2Movies.length) return;
     setLoading(true);
 
-    const p1G = countGenres(p1);
-    const p2G = countGenres(p2);
-    const sharedGenreIds = Object.keys(p1G).filter(g=>p2G[g]).sort((a,b)=>(p1G[b]+p2G[b])-(p1G[a]+p2G[a]));
-    const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
-    const existingIds = new Set([...p1,...p2].map(m=>m.id));
+    const existing = new Set(
+      [...person1Movies, ...person2Movies].map(m => m.id)
+    );
+
+    try {
+      const res = await fetch(
+        `${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=1000&vote_average.gte=7&page=1`
+      );
+      const data = await res.json();
+
+      const pool = (data.results || []).filter(
+        m => isAllowed(m) && !existing.has(m.id)
+      );
+
+      const final = [];
+      let checked = 0;
+
+      for (const m of pool) {
+        if (final.length >= 12 || checked >= 40) break;
+
+        const stream = await getStreamingInfo(m.id, selectedCountry);
+        checked++;
+
+        if (streamingOnly && stream.flatrate.length === 0) continue;
+
+        final.push(m);
+      }
+
+      setRecommendations(final);
+    } catch {
+      setRecommendations([]);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    if (activeTab === "recommendations") doFetchRecommendations();
+  }, [activeTab, recsKey, selectedCountry, streamingOnly]);
+
+  /* ================= UI ================= */
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+
+        {/* HEADER */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          <button
+            onClick={() => setStreamingOnly(v => !v)}
+            className={`px-5 py-3 rounded-xl font-semibold ${
+              streamingOnly
+                ? "bg-green-600 text-white"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            }`}
+          >
+            🎬 Streaming Only
+          </button>
+
+          <button
+            onClick={() => setTogethernessMode(v => !v)}
+            className={`px-5 py-3 rounded-xl font-semibold ${
+              togethernessMode
+                ? "bg-pink-600 text-white"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800"
+            }`}
+          >
+            ✨ Togetherness
+          </button>
+        </div>
+
+        {/* SEARCH */}
+        <input
+          value={searchQuery}
+          onChange={e => {
+            setSearchQuery(e.target.value);
+            searchMovies(e.target.value);
+          }}
+          placeholder="Search movies..."
+          className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-6 py-4 mb-8"
+        />
+
+        {/* RESULTS */}
+        {activeTab === "search" && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+            {(searchResults.length ? searchResults : trendingMovies).map(m => (
+              <div key={m.id} className="text-sm text-center">
+                {m.title}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
     try {
       let rawResults = [];
