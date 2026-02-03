@@ -317,12 +317,12 @@ export default function MovieTracker() {
       if (togetherMode) {
         const genresToUse = sharedGenreIds.slice(0,3);
         if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=5000&vote_average.gte=7.5&primary_release_date.gte=1990-01-01`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=2020-01-01`);
           rawResults = (await res.json()).results || [];
         } else {
           const perGenre = await Promise.all(genresToUse.map(async gid => {
             const pages = await Promise.all([1,2].map(pg=>
-              fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1990-01-01&page=${pg}`)
+              fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
                 .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
             ));
             return pages.flat();
@@ -333,23 +333,27 @@ export default function MovieTracker() {
             freqMap.get(m.id).count++;
           }));
           freqMap.forEach(({movie,count}) => {
-            rawResults.push({...movie, _score: count*80 + (movie.vote_average||0)*10});
+            const yr = parseInt((movie.release_date || "0").slice(0,4));
+            const recency = yr >= 2025 ? 220 : yr >= 2024 ? 200 : yr >= 2023 ? 160 : yr >= 2022 ? 120 : yr >= 2020 ? 80 : 30;
+            rawResults.push({...movie, _score: count*80 + (movie.vote_average||0)*10 + recency});
           });
           rawResults.sort((a,b)=>b._score-a._score);
         }
       } else {
         const genresToUse = allGenreIds.slice(0,6);
         if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=2000&vote_average.gte=6.5&primary_release_date.gte=1990-01-01`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.0&primary_release_date.gte=2020-01-01`);
           rawResults = (await res.json()).results || [];
         } else {
           const gStr = genresToUse.join("|");
           const pages = await Promise.all([1,2,3].map(pg=>
-            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=1990-01-01&page=${pg}`)
+            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
           ));
           pages.flat().forEach(m => {
-            let score = (m.popularity||0)/5 + (m.vote_average||0)*4;
+            const yr = parseInt((m.release_date || "0").slice(0,4));
+            const recency = yr >= 2025 ? 220 : yr >= 2024 ? 200 : yr >= 2023 ? 160 : yr >= 2022 ? 120 : yr >= 2020 ? 80 : 30;
+            let score = (m.popularity||0)/5 + (m.vote_average||0)*4 + recency;
             (m.genre_ids||[]).forEach(g => { if(p1G[g]) score+=10; if(p2G[g]) score+=10; });
             rawResults.push({...m, _score:score});
           });
@@ -389,7 +393,10 @@ export default function MovieTracker() {
         // (We approximate by checking if the movie's flatrate providers overlap
         //  with providers from the existing lists — simplified: just bonus for having flatrate)
         let finalScore = movie._score || 0;
-        if (stream.flatrate.length > 0) finalScore += 15; // small bonus for being streamable
+        if (stream.flatrate.length > 0) finalScore += 15;
+        // reinforce recency at final sort so it isn't washed out by streaming bonus
+        const finalYr = parseInt((movie.release_date || "0").slice(0,4));
+        finalScore += finalYr >= 2025 ? 80 : finalYr >= 2024 ? 65 : finalYr >= 2023 ? 45 : finalYr >= 2022 ? 25 : 0;
 
         final.push({ ...movie, _finalScore: finalScore, _stream: stream });
       }
