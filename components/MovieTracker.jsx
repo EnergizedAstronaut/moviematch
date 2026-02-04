@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v2.3 - True refresh with random pages + persistent hidden list
+// MovieMatch v2.4 - Hide without auto-refresh, user controls refresh
 
 import { useState, useEffect } from "react";
 
@@ -276,8 +276,7 @@ export default function MovieTracker() {
     setHiddenMovieIds(prev => new Set([...prev, id]));
     // Remove from current recommendations
     setRecommendations(recommendations.filter(m => m.id !== id));
-    // Trigger a fetch to get ONE replacement movie
-    setRecsKey(k => k + 1);
+    // Don't auto-refresh - let the user click Refresh when they want more
   }
 
   // --- Compatibility -------------------------------------------------------
@@ -852,7 +851,14 @@ export default function MovieTracker() {
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
+              <div>
+                {recommendations.length < 4 && (
+                  <div className="mb-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
+                    <p className="text-yellow-400 text-sm">Running low on recommendations! Click <strong>Refresh</strong> to load more.</p>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
+              </div>
             ) : (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                 <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
