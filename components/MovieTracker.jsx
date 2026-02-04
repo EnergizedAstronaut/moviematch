@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v2.2 - Remove recommendations feature added
+// MovieMatch v2.3 - True refresh with random pages + persistent hidden list
 
 import { useState, useEffect } from "react";
 
@@ -114,6 +114,7 @@ export default function MovieTracker() {
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [recsKey, setRecsKey] = useState(0);
+  const [hiddenMovieIds, setHiddenMovieIds] = useState(new Set());
 
   // NEW: streaming toggle
   const [streamingOnly, setStreamingOnly] = useState(false);
@@ -271,7 +272,12 @@ export default function MovieTracker() {
   const commonMovies = (() => { const s = new Set(person1Movies.map(m=>m.id)); return person2Movies.filter(m=>s.has(m.id)); })();
   
   function removeFromRecommendations(id) {
+    // Mark this movie as hidden permanently
+    setHiddenMovieIds(prev => new Set([...prev, id]));
+    // Remove from current recommendations
     setRecommendations(recommendations.filter(m => m.id !== id));
+    // Trigger a fetch to get ONE replacement movie
+    setRecsKey(k => k + 1);
   }
 
   // --- Compatibility -------------------------------------------------------
@@ -324,10 +330,10 @@ export default function MovieTracker() {
     const sharedGenreIds = Object.keys(p1G).filter(g=>p2G[g]).sort((a,b)=>(p1G[b]+p2G[b])-(p1G[a]+p2G[a]));
     const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
     const existingIds = new Set([...p1,...p2].map(m=>m.id));
-
-    // Collect flatrate providers already in each person's list for shared-provider scoring
-    // We gather these once up front so we don't hammer the API per-candidate
-    // (approximate: use the movies already fetched; in practice covers the common platforms)
+    
+    // Randomize which pages we fetch to get variety on refresh
+    const randomPage1 = Math.floor(Math.random() * 3) + 1; // 1-3
+    const randomPage2 = Math.floor(Math.random() * 3) + 1; // 1-3
 
     try {
       let rawResults = [];
@@ -335,11 +341,11 @@ export default function MovieTracker() {
       if (togetherMode) {
         const genresToUse = sharedGenreIds.slice(0,3);
         if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=2020-01-01`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=2020-01-01&page=${randomPage1}`);
           rawResults = (await res.json()).results || [];
         } else {
           const perGenre = await Promise.all(genresToUse.map(async gid => {
-            const pages = await Promise.all([1,2].map(pg=>
+            const pages = await Promise.all([randomPage1,randomPage2].map(pg=>
               fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
                 .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
             ));
@@ -360,11 +366,11 @@ export default function MovieTracker() {
       } else {
         const genresToUse = allGenreIds.slice(0,6);
         if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.0&primary_release_date.gte=2020-01-01`);
+          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${randomPage1}`);
           rawResults = (await res.json()).results || [];
         } else {
           const gStr = genresToUse.join("|");
-          const pages = await Promise.all([1,2,3].map(pg=>
+          const pages = await Promise.all([randomPage1,randomPage2,randomPage1+1].map(pg=>
             fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
           ));
@@ -379,12 +385,13 @@ export default function MovieTracker() {
         }
       }
 
-      // Dedup + isAllowed + skip already-added
+      // Dedup + isAllowed + skip already-added + skip hidden
       const seen = new Set();
       const pool = [];
       for (const m of rawResults) {
         if (seen.has(m.id)) continue;
         if (existingIds.has(m.id)) continue;
+        if (hiddenMovieIds.has(m.id)) continue; // Skip hidden movies
         if (!isAllowed(m)) continue;
         seen.add(m.id);
         pool.push(m);
@@ -839,6 +846,7 @@ export default function MovieTracker() {
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ 
                 setRecommendations([]);
+                setHiddenMovieIds(new Set()); // Clear hidden list for fresh start
                 setLoading(true);
                 setRecsKey(k => k+1);
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
