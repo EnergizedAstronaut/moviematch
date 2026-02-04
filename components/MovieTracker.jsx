@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v2.1 - Fresh build
+// MovieMatch v2.2 - Remove recommendations feature added
 
 import { useState, useEffect } from "react";
 
@@ -269,6 +269,10 @@ export default function MovieTracker() {
   const isInPerson1 = id => person1Movies.some(m=>m.id===id);
   const isInPerson2 = id => person2Movies.some(m=>m.id===id);
   const commonMovies = (() => { const s = new Set(person1Movies.map(m=>m.id)); return person2Movies.filter(m=>s.has(m.id)); })();
+  
+  function removeFromRecommendations(id) {
+    setRecommendations(recommendations.filter(m => m.id !== id));
+  }
 
   // --- Compatibility -------------------------------------------------------
   function calcCompatibilityScore() {
@@ -437,7 +441,7 @@ export default function MovieTracker() {
   // SUB-COMPONENTS
   // ===========================================================================
 
-  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null}) => (
+  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null}) => (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
@@ -495,6 +499,11 @@ export default function MovieTracker() {
         {personNum && (
           <button onClick={e=>{e.stopPropagation();removeMovieFromPerson(movie.id,personNum);}} className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
             <X className="w-3 h-3"/> Remove
+          </button>
+        )}
+        {removeFromRecs && (
+          <button onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} className="w-full bg-zinc-700/50 hover:bg-zinc-700 text-zinc-300 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors mt-2">
+            <X className="w-3 h-3"/> Hide
           </button>
         )}
       </div>
@@ -826,7 +835,7 @@ export default function MovieTracker() {
             )}
             <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
-              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"}</p>
+              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"} {recommendations.length > 0 && `• ${recommendations.length} movies`}</p>
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ 
                 setRecommendations([]);
@@ -835,7 +844,7 @@ export default function MovieTracker() {
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
             {recommendations.length>0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null}/>)}</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
             ) : (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                 <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
