@@ -184,12 +184,32 @@ export default function MovieTracker() {
   // --- TMDB ----------------------------------------------------------------
   async function shouldExcludeMovie(movieId) {
     try {
-      const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`);
-      const data = await res.json();
-      const usRelease = data.results?.find(r => r.iso_3166_1 === "US");
-      if (!usRelease?.release_dates) return false;
-      const certs = usRelease.release_dates.map(rd => rd.certification).filter(c => c && c.trim());
-      return certs.some(c => c === "G" || c === "PG");
+      const [ratingRes, keywordRes] = await Promise.all([
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`),
+        fetch(`${TMDB_BASE_URL}/movie/${movieId}/keywords?api_key=${TMDB_API_KEY}`)
+      ]);
+      
+      // Check G/PG rating
+      const ratingData = await ratingRes.json();
+      const usRelease = ratingData.results?.find(r => r.iso_3166_1 === "US");
+      if (usRelease?.release_dates) {
+        const certs = usRelease.release_dates.map(rd => rd.certification).filter(c => c && c.trim());
+        if (certs.some(c => c === "G" || c === "PG")) return true;
+      }
+      
+      // Check LGBTQ keywords
+      const keywordData = await keywordRes.json();
+      const keywords = (keywordData.keywords || []).map(k => k.name.toLowerCase());
+      const lgbtqKeywords = [
+        "lgbt", "lgbtq", "gay", "lesbian", "bisexual", "transgender", "queer",
+        "homosexuality", "gay romance", "lesbian romance", "coming out",
+        "gay parent", "lesbian parent", "same-sex marriage", "gay theme",
+        "drag queen", "gay couple", "lesbian couple", "lgbtq+", "gay man",
+        "lesbian relationship", "gay relationship"
+      ];
+      if (keywords.some(kw => lgbtqKeywords.some(lk => kw.includes(lk)))) return true;
+      
+      return false;
     } catch { return false; }
   }
 
