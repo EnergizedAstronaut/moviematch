@@ -356,9 +356,10 @@ export default function MovieTracker() {
     const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
     const existingIds = new Set([...p1,...p2].map(m=>m.id));
     
-    // Randomize which pages we fetch to get variety on refresh
-    const randomPage1 = Math.floor(Math.random() * 3) + 1; // 1-3
-    const randomPage2 = Math.floor(Math.random() * 3) + 1; // 1-3
+    // Randomize which pages we fetch to get variety on refresh (1-10)
+    const randomPage1 = Math.floor(Math.random() * 10) + 1;
+    const randomPage2 = Math.floor(Math.random() * 10) + 1;
+    const randomPage3 = Math.floor(Math.random() * 10) + 1;
 
     try {
       let rawResults = [];
@@ -370,7 +371,7 @@ export default function MovieTracker() {
           rawResults = (await res.json()).results || [];
         } else {
           const perGenre = await Promise.all(genresToUse.map(async gid => {
-            const pages = await Promise.all([randomPage1,randomPage2].map(pg=>
+            const pages = await Promise.all([randomPage1,randomPage2,randomPage3].map(pg=>
               fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
                 .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
             ));
@@ -395,7 +396,7 @@ export default function MovieTracker() {
           rawResults = (await res.json()).results || [];
         } else {
           const gStr = genresToUse.join("|");
-          const pages = await Promise.all([randomPage1,randomPage2,randomPage1+1].map(pg=>
+          const pages = await Promise.all([randomPage1,randomPage2,randomPage3].map(pg=>
             fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
               .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
           ));
@@ -490,10 +491,10 @@ export default function MovieTracker() {
         {removeFromRecs && (
           <button 
             onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
-            className="absolute top-3 right-3 bg-red-600 hover:bg-red-500 rounded-full p-2 transition-all shadow-lg hover:scale-110"
+            className="absolute top-0 right-0 bg-black/80 hover:bg-black text-white p-2 transition-colors"
             title="Hide this recommendation"
           >
-            <X className="w-4 h-4 text-white stroke-[3]"/>
+            <X className="w-4 h-4"/>
           </button>
         )}
         {/* Streaming badge */}
