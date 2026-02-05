@@ -471,7 +471,7 @@ export default function MovieTracker() {
           </button>
         )}
         {/* Streaming badge */}
-        {movie._hasStream && (
+        {movie._hasStream && !removeFromRecs && (
           <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
             <span className="text-xs font-semibold text-white">▶ Stream</span>
           </div>
@@ -788,176 +788,110 @@ export default function MovieTracker() {
             </button>
           ))}
         </div>
-        
-      {/* Spinner */}
-      {loading && (
-        <div className="text-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto" />
-        </div>
-      )}
 
-      {/* DISCOVER */}
-      {activeTab === "search" && !loading && (
-        <div>
-          {searchResults.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {searchResults.map(m => (
-                <MovieCard
-                  key={m.id}
-                  movie={m}
-                  onSelect={mv => fetchMovieDetails(mv.id)}
-                  showActions
-                />
+        {/* Spinner */}
+        {loading && <div className="text-center py-20"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-500 mx-auto"/></div>}
+
+        {/* DISCOVER */}
+        {activeTab==="search"&&!loading && (
+          <div>
+            {searchResults.length>0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{searchResults.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-3 mb-6"><TrendingUp className="w-6 h-6 text-red-500"/><h2 className="text-2xl font-bold">Trending This Week</h2></div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{trendingMovies.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* YOUR LISTS */}
+        {activeTab==="compare"&&!loading && (
+          <div className="space-y-8">
+            {commonMovies.length>0 && (
+              <div className="rounded-2xl p-8 border border-pink-900/20" style={{background:"linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))"}}>
+                <h2 className="text-2xl font-bold mb-6 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400" fill="#f472b6"/> Perfect Match ({commonMovies.length})</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{commonMovies.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)}/>)}</div>
+              </div>
+            )}
+            <div className="grid lg:grid-cols-2 gap-6">
+              {[{num:1,name:person1Name,movies:person1Movies,color:"blue"},{num:2,name:person2Name,movies:person2Movies,color:"purple"}].map(p=>(
+                <div key={p.num} className="bg-zinc-900/50 rounded-2xl p-6 border border-zinc-800">
+                  <h2 className={`text-xl font-bold mb-4 ${p.color==="blue"?"text-blue-400":"text-purple-400"}`}>{p.name}'s List ({p.movies.length})</h2>
+                  {p.movies.length===0 ? (
+                    <div className="text-center py-16"><Film className="w-12 h-12 text-zinc-700 mx-auto mb-3"/><p className="text-zinc-500 mb-4">No movies yet</p><button onClick={()=>setActiveTab("search")} className={`${p.color==="blue"?"text-blue-400 hover:text-blue-300":"text-purple-400 hover:text-purple-300"} font-medium`}>Start adding movies →</button></div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">{p.movies.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} personNum={p.num}/>)}</div>
+                  )}
+                </div>
               ))}
             </div>
-          ) : (
-            <div>
-              <div className="flex items-center gap-3 mb-6">
-                <TrendingUp className="w-6 h-6 text-red-500" />
-                <h2 className="text-2xl font-bold">Trending This Week</h2>
+          </div>
+        )}
+
+        {/* FOR YOU */}
+        {activeTab==="recommendations"&&!loading && (
+          <div className="space-y-6">
+            {togethernessMode && (
+              <div className="rounded-2xl p-8 border border-pink-900/20" style={{background:"linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))"}}>
+                <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Sparkles className="w-7 h-7 text-yellow-400"/>Togetherness Mode Active</h2>
+                <p className="text-zinc-300">Finding movies that match genres you <strong>both</strong> enjoy.</p>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {trendingMovies.map(m => (
-                  <MovieCard
-                    key={m.id}
-                    movie={m}
-                    onSelect={mv => fetchMovieDetails(mv.id)}
-                    showActions
-                  />
-                ))}
+            )}
+            {!togethernessMode && person1Movies.length>0 && person2Movies.length>0 && (
+              <div className="rounded-2xl p-6 border border-zinc-800/50 bg-zinc-900/30">
+                <p className="text-zinc-400 text-sm">💡 <strong>Tip:</strong> Turn on Togetherness Mode for stricter recommendations based on genres you both like.</p>
               </div>
+            )}
+            <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
+              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
+              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"} {recommendations.length > 0 && `• ${recommendations.length} movies`}</p>
+              {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
+              <button onClick={()=>{ 
+                setRecommendations([]);
+                setHiddenMovieIds(new Set()); // Clear hidden list for fresh start
+                setLoading(true);
+                setRecsKey(k => k+1);
+              }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* YOUR LISTS */}
-      {activeTab === "compare" && !loading && (
-        <div className="space-y-8">
-          {commonMovies.length > 0 && (
-            <div
-              className="rounded-2xl p-8 border border-pink-900/20"
-              style={{ background: "linear-gradient(to right, rgba(162,17,76,0.15), rgba(88,28,135,0.15))" }}
-            >
-              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Heart className="w-7 h-7 text-pink-400" fill="#f472b6" />
-                Perfect Match ({commonMovies.length})
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                {commonMovies.map(m => (
-                  <MovieCard
-                    key={m.id}
-                    movie={m}
-                    onSelect={mv => fetchMovieDetails(mv.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="grid lg:grid-cols-2 gap-6">
-            {[{
-              num: 1, name: person1Name, movies: person1Movies, color: "blue"
-            }, {
-              num: 2, name: person2Name, movies: person2Movies, color: "purple"
-            }].map(p => (
-              <div key={p.num} className="bg-zinc-900/50 rounded-2xl p-6 border border-zinc-800">
-                <h2 className={`text-xl font-bold mb-4 ${p.color === "blue" ? "text-blue-400" : "text-purple-400"}`}>
-                  {p.name}'s List ({p.movies.length})
-                </h2>
-
-                {p.movies.length === 0 ? (
-                  <div className="text-center py-16">
-                    <Film className="w-12 h-12 text-zinc-700 mx-auto mb-3" />
-                    <p className="text-zinc-500 mb-4">No movies yet</p>
-                    <button
-                      onClick={() => setActiveTab("search")}
-                      className={`${p.color === "blue"
-                        ? "text-blue-400 hover:text-blue-300"
-                        : "text-purple-400 hover:text-purple-300"
-                      } font-medium`}
-                    >
-                      Start adding movies →
-                    </button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {p.movies.map(m => (
-                      <MovieCard
-                        key={m.id}
-                        movie={m}
-                        onSelect={mv => fetchMovieDetails(mv.id)}
-                        personNum={p.num}
-                      />
-                    ))}
+            {recommendations.length>0 ? (
+              <div>
+                {recommendations.length < 4 && (
+                  <div className="mb-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
+                    <p className="text-yellow-400 text-sm">Running low on recommendations! Click <strong>Refresh</strong> to load more.</p>
                   </div>
                 )}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
               </div>
-            ))}
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+                <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
+                <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
+                <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
 
-      {/* FOR YOU */}
-      {activeTab === "recommendations" && !loading && (
-        <div className="space-y-6">
-
-          <div
-            className="rounded-2xl p-8 border border-purple-900/20"
-            style={{ background: "linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))" }}
-          >
-            <h2 className="text-2xl font-bold mb-3 flex items-center gap-3">
-              <Heart className="w-7 h-7 text-pink-400" />
-              {togethernessMode ? "Perfect for Both of You" : "Recommended for You"}
-            </h2>
-
-            <button
-              onClick={() => {
-                setRecommendations([]);
-                setHiddenMovieIds(new Set());
-                setLoading(true);
-                setRecsKey(k => k + 1);
-              }}
-              className="text-white font-semibold px-6 py-3 rounded-xl"
-              style={{ background: "linear-gradient(to right, #ca8a04, #ea580c)" }}
-            >
-              Refresh Recommendations
-            </button>
-          </div>
-
-          {recommendations.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {recommendations.map(m => (
-                <MovieCard
-                  key={m.id}
-                  movie={m}
-                  onSelect={mv => fetchMovieDetails(mv.id)}
-                  showActions
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
-              <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-              <p className="text-zinc-500 text-lg mb-2">
-                Add movies to both lists to get personalized recommendations
-              </p>
-              <p className="text-zinc-600 text-sm">
-                The more movies you add, the better the recommendations!
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Modals */}
-      {selectedMovie && <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />}
-      {showSaveModal && <SaveModal />}
-      {showLoadModal && <LoadModal />}
-      {showCompatibilityModal && <CompatibilityModal />}
-      {showExportModal && <ExportModal />}
-
+        {/* Modals */}
+        {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
+        {showSaveModal && <SaveModal/>}
+        {showLoadModal && <LoadModal/>}
+        {showCompatibilityModal && <CompatibilityModal/>}
+        {showExportModal && <ExportModal/>}
+      </div>
     </div>
-  </div>
-);
+  );
+}
+
+        {/* Modals */}
+        {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
+        {showSaveModal && <SaveModal/>}
+        {showLoadModal && <LoadModal/>}
+        {showCompatibilityModal && <CompatibilityModal/>}
+        {showExportModal && <ExportModal/>}
+      </div>
+    </div>
+  );
 }
