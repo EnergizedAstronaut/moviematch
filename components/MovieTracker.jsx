@@ -24,6 +24,17 @@ const Zap = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {..
 const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
+// --- API CONFIG -----------------------------------------------------------
+const TASTEDIVE_KEY = "1068398-Moviemat-42500EF7";
+const TASTEDIVE_BASE = "https://tastedive.com/api/similar";
+
+// Helper fetch
+const fetchJSON = async (url) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("API error");
+  return res.json();
+};
+
 const COUNTRIES = [
   {code:"US",name:"United States",flag:"🇺🇸"},{code:"GB",name:"United Kingdom",flag:"🇬🇧"},
   {code:"CA",name:"Canada",flag:"🇨🇦"},{code:"AU",name:"Australia",flag:"🇦🇺"},
@@ -37,6 +48,14 @@ const GENRE_NAMES = {
   28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",
   18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",
   9648:"Mystery",10749:"Romance",878:"Science Fiction",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"
+};
+const searchTMDBMovie = async (title) => {
+  const url =
+    `${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}` +
+    `&query=${encodeURIComponent(title)}`;
+
+  const data = await fetchJSON(url);
+  return data.results?.[0] || null;
 };
 
 const ANIMATION_GENRE_ID = 16;
@@ -344,130 +363,89 @@ export default function MovieTracker() {
     if (p1Score === 0 && p2Score === 0) return null;
     return Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
   }
+  const getGenreRecommendations = async (genreIds) => {
+  if (!genreIds.length) return [];
+
+  const url =
+    `${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}` +
+    `&with_genres=${genreIds.join(",")}` +
+    `&sort_by=popularity.desc`;
+
+  const data = await fetchJSON(url);
+  return data.results || [];
+}<button
+  onClick={() => {
+    setRecommendations([]);
+    setHiddenMovieIds(new Set());
+    generateRecommendations({
+      person1Movies,
+      person2Movies,
+      togethernessMode,
+      hiddenMovieIds,
+      setRecommendations,
+      setLoading
+    });
+  }}
+>
+  Refresh Recommendations
+</button>
+;
+
 
   // --- Recommendations -----------------------------------------------------
-  async function doFetchRecommendations(p1, p2, togetherMode) {
-    if (!p1.length || !p2.length) { setRecommendations([]); return; }
+const generateRecommendations = async ({
+  person1Movies,
+  person2Movies,
+  togethernessMode,
+  hiddenMovieIds,
+  setRecommendations,
+  setLoading
+}) => {
+  try {
     setLoading(true);
 
-    const p1G = countGenres(p1);
-    const p2G = countGenres(p2);
-    const sharedGenreIds = Object.keys(p1G).filter(g=>p2G[g]).sort((a,b)=>(p1G[b]+p2G[b])-(p1G[a]+p2G[a]));
-    const allGenreIds = [...new Set([...Object.keys(p1G),...Object.keys(p2G)])].sort((a,b)=>((p1G[b]||0)+(p2G[b]||0))-((p1G[a]||0)+(p2G[a]||0)));
-    const existingIds = new Set([...p1,...p2].map(m=>m.id));
-    
-    // Randomize which pages we fetch to get variety on refresh
-    const randomPage1 = Math.floor(Math.random() * 3) + 1; // 1-3
-    const randomPage2 = Math.floor(Math.random() * 3) + 1; // 1-3
+    const p1Titles = person1Movies.map(m => m.title);
+    const p2Titles = person2Movies.map(m => m.title);
 
-    try {
-      let rawResults = [];
+    // --- TOGETHERNESS MODE (shared genres) -------------------------------
+    if (togethernessMode) {
+      const p1Genres = person1Movies.flatMap(m => m.genre_ids || []);
+      const p2Genres = person2Movies.flatMap(m => m.genre_ids || []);
 
-      if (togetherMode) {
-        const genresToUse = sharedGenreIds.slice(0,3);
-        if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=6.5&primary_release_date.gte=2020-01-01&page=${randomPage1}`);
-          rawResults = (await res.json()).results || [];
-        } else {
-          const perGenre = await Promise.all(genresToUse.map(async gid => {
-            const pages = await Promise.all([randomPage1,randomPage2].map(pg=>
-              fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gid}&with_original_language=en&sort_by=vote_average.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
-                .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
-            ));
-            return pages.flat();
-          }));
-          const freqMap = new Map();
-          perGenre.forEach(list => list.forEach(m => {
-            if (!freqMap.has(m.id)) freqMap.set(m.id,{movie:m,count:0});
-            freqMap.get(m.id).count++;
-          }));
-          freqMap.forEach(({movie,count}) => {
-            const yr = parseInt((movie.release_date || "0").slice(0,4));
-            const recency = yr >= 2025 ? 220 : yr >= 2024 ? 200 : yr >= 2023 ? 160 : yr >= 2022 ? 120 : yr >= 2020 ? 80 : 30;
-            rawResults.push({...movie, _score: count*80 + (movie.vote_average||0)*10 + recency});
-          });
-          rawResults.sort((a,b)=>b._score-a._score);
-        }
-      } else {
-        const genresToUse = allGenreIds.slice(0,6);
-        if (genresToUse.length === 0) {
-          const res = await fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=500&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${randomPage1}`);
-          rawResults = (await res.json()).results || [];
-        } else {
-          const gStr = genresToUse.join("|");
-          const pages = await Promise.all([randomPage1,randomPage2,randomPage1+1].map(pg=>
-            fetch(`${TMDB_BASE_URL}/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${gStr}&with_original_language=en&sort_by=popularity.desc&vote_count.gte=200&vote_average.gte=6.0&primary_release_date.gte=2020-01-01&page=${pg}`)
-              .then(r=>r.json()).then(d=>d.results||[]).catch(()=>[])
-          ));
-          pages.flat().forEach(m => {
-            const yr = parseInt((m.release_date || "0").slice(0,4));
-            const recency = yr >= 2025 ? 220 : yr >= 2024 ? 200 : yr >= 2023 ? 160 : yr >= 2022 ? 120 : yr >= 2020 ? 80 : 30;
-            let score = (m.popularity||0)/5 + (m.vote_average||0)*4 + recency;
-            (m.genre_ids||[]).forEach(g => { if(p1G[g]) score+=10; if(p2G[g]) score+=10; });
-            rawResults.push({...m, _score:score});
-          });
-          rawResults.sort((a,b)=>b._score-a._score);
-        }
-      }
+      const sharedGenres = [...new Set(
+        p1Genres.filter(g => p2Genres.includes(g))
+      )];
 
-      // Dedup + isAllowed + skip already-added + skip hidden
-      const seen = new Set();
-      const pool = [];
-      for (const m of rawResults) {
-        if (seen.has(m.id)) continue;
-        if (existingIds.has(m.id)) continue;
-        if (hiddenMovieIds.has(m.id)) continue; // Skip hidden movies
-        if (!isAllowed(m)) continue;
-        seen.add(m.id);
-        pool.push(m);
-      }
+      const genreRecs = await getGenreRecommendations(sharedGenres);
 
-      // Rating filter + streaming filter + shared-provider scoring
-      const final = [];
-      let checked = 0;
-      for (const movie of pool) {
-        if (final.length >= 12) break;
-        if (checked >= 50) break;
-
-        const [exclude, stream] = await Promise.all([
-          shouldExcludeMovie(movie.id),
-          getStreamingInfo(movie.id, selectedCountry)
-        ]);
-        checked++;
-
-        if (exclude) continue;
-        // If streaming-only is on, require flatrate
-        if (streamingOnly && stream.flatrate.length === 0) continue;
-
-        // Boost score if this movie is on a platform both persons already watch
-        // (We approximate by checking if the movie's flatrate providers overlap
-        //  with providers from the existing lists — simplified: just bonus for having flatrate)
-        let finalScore = movie._score || 0;
-        if (stream.flatrate.length > 0) finalScore += 15;
-        // reinforce recency at final sort so it isn't washed out by streaming bonus
-        const finalYr = parseInt((movie.release_date || "0").slice(0,4));
-        finalScore += finalYr >= 2025 ? 80 : finalYr >= 2024 ? 65 : finalYr >= 2023 ? 45 : finalYr >= 2022 ? 25 : 0;
-        // Add randomization so each refresh gives different results
-        finalScore += Math.random() * 100;
-
-        final.push({ ...movie, _finalScore: finalScore, _stream: stream });
-      }
-
-      // Re-sort by finalScore after streaming adjustments
-      final.sort((a, b) => b._finalScore - a._finalScore);
-      setRecommendations(final);
-    } catch(e) {
-      console.error("Recs error:", e);
-      setRecommendations([]);
+      setRecommendations(
+        genreRecs.filter(m => !hiddenMovieIds.has(m.id)).slice(0, 24)
+      );
+      return;
     }
+
+    // --- NORMAL MODE (TasteDive + TMDB) ---------------------------------
+    const seedTitles = [...new Set([...p1Titles, ...p2Titles])];
+
+    const tasteDiveTitles = await getTasteDiveMovies(seedTitles);
+
+    const tmdbResults = await Promise.all(
+      tasteDiveTitles.map(title => searchTMDBMovie(title))
+    );
+
+    const cleaned = tmdbResults
+      .filter(Boolean)
+      .filter(m => !hiddenMovieIds.has(m.id));
+
+    setRecommendations(cleaned.slice(0, 24));
+
+  } catch (err) {
+    console.error("Recommendation error:", err);
+  } finally {
     setLoading(false);
   }
-
-  useEffect(() => {
-    if (person1Movies.length > 0 && person2Movies.length > 0) {
-      doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
-    }
-  }, [person1Movies, person2Movies, togethernessMode, recsKey, streamingOnly, selectedCountry]);
+};
+;
 
   // ===========================================================================
   // SUB-COMPONENTS
