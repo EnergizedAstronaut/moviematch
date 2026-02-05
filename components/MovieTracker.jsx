@@ -350,7 +350,7 @@ export default function MovieTracker() {
   }
 
   // --- TasteDive + TMDB Recommendations ------------------------------------
-  async function doFetchRecommendations(p1, p2, togetherMode) {
+  async function doFetchRecommendationsTMDB(p1, p2, togetherMode) {
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
 
@@ -452,6 +452,36 @@ export default function MovieTracker() {
     
     setLoading(false);
   }
+async function doFetchRecommendations(p1, p2, togetherMode) {
+  try {
+    const tasteResults = await fetchTasteDiveRecommendations(p1, p2);
+
+    // guard — if weak results → fallback
+    if (!tasteResults || tasteResults.length < 6) {
+      console.log("TasteDive weak — using TMDB fallback");
+      return doFetchRecommendationsTMDB(p1, p2, togetherMode);
+    }
+
+    // dedupe + filter against existing lists
+    const existingIds = new Set([...p1, ...p2].map(m => m.id));
+    const unique = [];
+    const seen = new Set();
+
+    for (const m of tasteResults) {
+      if (seen.has(m.id)) continue;
+      if (existingIds.has(m.id)) continue;
+      if (hiddenMovieIds.has(m.id)) continue;
+      seen.add(m.id);
+      unique.push(m);
+    }
+
+    setRecommendations(unique.slice(0, 12));
+
+  } catch (err) {
+    console.log("TasteDive failed — using TMDB fallback");
+    return doFetchRecommendationsTMDB(p1, p2, togetherMode);
+  }
+}
 
   useEffect(() => {
     if (person1Movies.length > 0 && person2Movies.length > 0) {
