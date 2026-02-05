@@ -48,6 +48,13 @@ function normalizeTitle(t) {
 const BLOCKED_SUBSTRINGS = [
   "gabriel",
   "quieres ser mi",
+  "lgbt",
+  "lgbtq",
+  "lesbian",
+  "gay",
+  "pride",
+  "queer",
+  "transgender",
 ];
 
 function isAllowed(movie) {
@@ -276,7 +283,6 @@ export default function MovieTracker() {
     setHiddenMovieIds(prev => new Set([...prev, id]));
     // Remove from current recommendations
     setRecommendations(recommendations.filter(m => m.id !== id));
-    // Don't auto-refresh - let the user click Refresh when they want more
   }
 
   // --- Compatibility -------------------------------------------------------
