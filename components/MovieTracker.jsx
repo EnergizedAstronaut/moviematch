@@ -283,6 +283,33 @@ export default function MovieTracker() {
     } catch(e) {}
     setLoading(false);
   }
+   // --- MPAA Helpers --------------------------------------------------------
+async function getContentRating(movieId) {
+  try {
+    const res = await fetch(
+      `${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`
+    );
+    const data = await res.json();
+
+    const us = data.results?.find(r => r.iso_3166_1 === "US");
+    if (!us) return "NR";
+
+    const certs = us.release_dates
+      .map(r => r.certification)
+      .filter(Boolean);
+
+    if (!certs.length) return "NR";
+
+    // pick most restrictive if multiple
+    const order = ["G","PG","PG-13","R","NC-17"];
+    certs.sort((a,b)=>order.indexOf(b)-order.indexOf(a));
+
+    return certs[0];
+
+  } catch {
+    return "NR";
+  }
+}
 
   // --- List Helpers --------------------------------------------------------
   function addMovieToPerson(movie, num) {
