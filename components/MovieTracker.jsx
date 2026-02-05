@@ -373,23 +373,7 @@ export default function MovieTracker() {
 
   const data = await fetchJSON(url);
   return data.results || [];
-}<button
-  onClick={() => {
-    setRecommendations([]);
-    setHiddenMovieIds(new Set());
-    generateRecommendations({
-      person1Movies,
-      person2Movies,
-      togethernessMode,
-      hiddenMovieIds,
-      setRecommendations,
-      setLoading
-    });
-  }}
->
-  Refresh Recommendations
-</button>
-;
+}
 
 
   // --- Recommendations -----------------------------------------------------
@@ -857,26 +841,23 @@ const generateRecommendations = async ({
                 setHiddenMovieIds(new Set()); // Clear hidden list for fresh start
                 setLoading(true);
                 setRecsKey(k => k+1);
-              }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
-            </div>
-            {recommendations.length>0 ? (
-              <div>
-                {recommendations.length < 4 && (
-                  <div className="mb-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
-                    <p className="text-yellow-400 text-sm">Running low on recommendations! Click <strong>Refresh</strong> to load more.</p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
-              </div>
-            ) : (
-              <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
-                <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
-                <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
-                <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
-              </div>
-            )}
-          </div>
-        )}
+              }} <button
+  onClick={() => {
+    setRecommendations([]);
+    setHiddenMovieIds(new Set());
+    generateRecommendations({
+      person1Movies,
+      person2Movies,
+      togethernessMode,
+      hiddenMovieIds,
+      setRecommendations,
+      setLoading
+    });
+  }}
+>
+  Refresh Recommendations
+</button>
+;
 
         {/* Modals */}
         {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
