@@ -446,81 +446,174 @@ export default function MovieTracker() {
   // ===========================================================================
   // SUB-COMPONENTS
   // ===========================================================================
+import { Film, Star, X } from "lucide-react";
 
-  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null}) => (
+const MovieCard = ({
+  movie,
+  onSelect,
+  showActions = false,
+  personNum = null,
+  matchIndicator = null,
+  removeFromRecs = null,
+}) => {
+  const isRecommendation = typeof removeFromRecs === "function";
+
+  return (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
-      <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{aspectRatio:"2/3"}}>
-        {movie.poster_path
-          ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
-          : <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-zinc-600"/></div>
-        }
-        {movie.vote_average>0 && !removeFromRecs && (
-          <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
-            <Star className="w-3 h-3 text-yellow-400" fill="#facc15"/>
-            <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
+      {/* Poster */}
+      <div
+        onClick={() => onSelect(movie)}
+        className="relative cursor-pointer overflow-hidden bg-zinc-800"
+        style={{ aspectRatio: "2 / 3" }}
+      >
+        {movie.poster_path ? (
+          <img
+            src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+            alt={movie.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Film className="w-12 h-12 text-zinc-600" />
           </div>
         )}
-        {/* X button for hiding recommendations - replaces rating badge */}
-        {removeFromRecs && (
-          <button 
-            onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
+
+        {/* Rating badge (hidden on recommendations) */}
+        {movie.vote_average > 0 && !isRecommendation && (
+          <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
+            <Star className="w-3 h-3 text-yellow-400" fill="#facc15" />
+            <span className="text-xs font-semibold text-white">
+              {movie.vote_average.toFixed(1)}
+            </span>
+          </div>
+        )}
+
+        {/* Hide recommendation button */}
+        {isRecommendation && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              removeFromRecs(movie.id);
+            }}
             className="absolute top-3 right-3 bg-red-600 hover:bg-red-500 rounded-full p-2 transition-all shadow-lg hover:scale-110"
             title="Hide this recommendation"
           >
-            <X className="w-4 h-4 text-white stroke-[3]"/>
+            <X className="w-4 h-4 text-white stroke-[3]" />
           </button>
         )}
+
         {/* Streaming badge */}
         {movie._hasStream && (
           <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
             <span className="text-xs font-semibold text-white">▶ Stream</span>
           </div>
         )}
+
         {/* Match indicator badge */}
         {matchIndicator && (
-          <div className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${ 
-            matchIndicator === "person1" ? "bg-blue-600/90" :
-            matchIndicator === "person2" ? "bg-purple-600/90" :
-            "bg-pink-600/90"
-          }`}>
+          <div
+            className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${
+              matchIndicator === "person1"
+                ? "bg-blue-600/90"
+                : matchIndicator === "person2"
+                ? "bg-purple-600/90"
+                : "bg-pink-600/90"
+            }`}
+          >
             <span className="text-xs font-semibold text-white">
-              {matchIndicator === "person1" ? person1Name.split(" ")[0] :
-               matchIndicator === "person2" ? person2Name.split(" ")[0] :
-               "Both"}
+              {matchIndicator === "person1"
+                ? person1Name.split(" ")[0]
+                : matchIndicator === "person2"
+                ? person2Name.split(" ")[0]
+                : "Both"}
             </span>
           </div>
         )}
       </div>
+
+      {/* Info */}
       <div className="p-4">
-        {/* Show match indicator as text label too for clarity */}
+        {/* Match label */}
         {matchIndicator && (
-          <div className={`text-xs font-semibold mb-2 ${
-            matchIndicator === "person1" ? "text-blue-400" :
-            matchIndicator === "person2" ? "text-purple-400" :
-            "text-pink-400"
-          }`}>
-            {matchIndicator === "person1" ? `For ${person1Name.split(" ")[0]}` :
-             matchIndicator === "person2" ? `For ${person2Name.split(" ")[0]}` :
-             "For Both"}
+          <div
+            className={`text-xs font-semibold mb-2 ${
+              matchIndicator === "person1"
+                ? "text-blue-400"
+                : matchIndicator === "person2"
+                ? "text-purple-400"
+                : "text-pink-400"
+            }`}
+          >
+            {matchIndicator === "person1"
+              ? `For ${person1Name.split(" ")[0]}`
+              : matchIndicator === "person2"
+              ? `For ${person2Name.split(" ")[0]}`
+              : "For Both"}
           </div>
         )}
-        <h3 className="font-semibold text-white text-sm mb-1" style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{movie.title}</h3>
-        <p className="text-zinc-500 text-xs mb-3">{movie.release_date?.split("-")[0]||"N/A"}</p>
+
+        <h3
+          className="font-semibold text-white text-sm mb-1"
+          style={{
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {movie.title}
+        </h3>
+
+        <p className="text-zinc-500 text-xs mb-3">
+          {movie.release_date?.split("-")[0] || "N/A"}
+        </p>
+
+        {/* Add buttons */}
         {showActions && (
           <div className="flex gap-2">
-            {!isInPerson1(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,1);}} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person1Name}</button>}
-            {!isInPerson2(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,2);}} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person2Name}</button>}
+            {!isInPerson1(movie.id) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addMovieToPerson(movie, 1);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+              >
+                {person1Name}
+              </button>
+            )}
+            {!isInPerson2(movie.id) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addMovieToPerson(movie, 2);
+                }}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+              >
+                {person2Name}
+              </button>
+            )}
           </div>
         )}
+
+        {/* Remove from person list */}
         {personNum && (
-          <button onClick={e=>{e.stopPropagation();removeMovieFromPerson(movie.id,personNum);}} className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
-            <X className="w-3 h-3"/> Remove
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              removeMovieFromPerson(movie.id, personNum);
+            }}
+            className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Remove
           </button>
         )}
       </div>
     </div>
   );
-
+};
+  
   // --- MovieModal ----------------------------------------------------------
   const MovieModal = ({movie,onClose}) => {
     if (!movie) return null;
