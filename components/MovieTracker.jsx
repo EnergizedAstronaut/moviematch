@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v3.1 - X button cache break test
+// MovieMatch v3.2 - TasteDive Integration Fixed
 
 import { useState, useEffect } from "react";
 
@@ -23,8 +23,6 @@ const Zap = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {..
 // --- Constants ---------------------------------------------------------------
 const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
-
-// --- API CONFIG -----------------------------------------------------------
 const TASTEDIVE_KEY = "1068398-Moviemat-42500EF7";
 const TASTEDIVE_BASE = "https://tastedive.com/api/similar";
 
@@ -33,6 +31,13 @@ const fetchJSON = async (url) => {
   const res = await fetch(url);
   if (!res.ok) throw new Error("API error");
   return res.json();
+};
+
+// Search TMDB by movie title
+const searchTMDBMovie = async (title) => {
+  const url = `${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`;
+  const data = await fetchJSON(url);
+  return data.results?.[0] || null;
 };
 
 const COUNTRIES = [
@@ -48,14 +53,6 @@ const GENRE_NAMES = {
   28:"Action",12:"Adventure",16:"Animation",35:"Comedy",80:"Crime",99:"Documentary",
   18:"Drama",10751:"Family",14:"Fantasy",36:"History",27:"Horror",10402:"Music",
   9648:"Mystery",10749:"Romance",878:"Science Fiction",10770:"TV Movie",53:"Thriller",10752:"War",37:"Western"
-};
-const searchTMDBMovie = async (title) => {
-  const url =
-    `${TMDB_BASE}/search/movie?api_key=${TMDB_API_KEY}` +
-    `&query=${encodeURIComponent(title)}`;
-
-  const data = await fetchJSON(url);
-  return data.results?.[0] || null;
 };
 
 const ANIMATION_GENRE_ID = 16;
@@ -106,14 +103,6 @@ async function getStreamingInfo(movieId, country = "US") {
   }
 }
 
-// Score boost when both persons' lists share a streaming platform
-function sharedProviderBonus(p1Flatrate, p2Flatrate) {
-  const s1 = new Set(p1Flatrate.map(p => p.provider_id));
-  let bonus = 0;
-  p2Flatrate.forEach(p => { if (s1.has(p.provider_id)) bonus += 25; });
-  return bonus;
-}
-
 // --- Main Component ----------------------------------------------------------
 export default function MovieTracker() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,8 +130,6 @@ export default function MovieTracker() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [recsKey, setRecsKey] = useState(0);
   const [hiddenMovieIds, setHiddenMovieIds] = useState(new Set());
-
-  // NEW: streaming toggle
   const [streamingOnly, setStreamingOnly] = useState(false);
 
   // --- Bootstrap -----------------------------------------------------------
@@ -241,7 +228,6 @@ export default function MovieTracker() {
         const year = parseInt((m.release_date || "0").slice(0, 4));
         return year >= 1985 && isAllowed(m);
       });
-      // Check rating + streaming in parallel per movie
       const checked = await Promise.all(filtered.slice(0, 24).map(async m => {
         const [ex, stream] = await Promise.all([
           shouldExcludeMovie(m.id),
@@ -318,9 +304,7 @@ export default function MovieTracker() {
   const commonMovies = (() => { const s = new Set(person1Movies.map(m=>m.id)); return person2Movies.filter(m=>s.has(m.id)); })();
   
   function removeFromRecommendations(id) {
-    // Mark this movie as hidden permanently
     setHiddenMovieIds(prev => new Set([...prev, id]));
-    // Remove from current recommendations
     setRecommendations(recommendations.filter(m => m.id !== id));
   }
 
@@ -336,6 +320,7 @@ export default function MovieTracker() {
     const ratingBonus = Math.max(10-Math.abs(avg(person1Movies)-avg(person2Movies))*2,0);
     return Math.min(Math.round(base+movieBonus+ratingBonus),100);
   }
+  
   function getCompatibilityDetails() {
     const p1G=countGenres(person1Movies), p2G=countGenres(person2Movies);
     const all = new Set([...Object.keys(p1G),...Object.keys(p2G)]);
@@ -363,114 +348,116 @@ export default function MovieTracker() {
     if (p1Score === 0 && p2Score === 0) return null;
     return Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
   }
-  const getGenreRecommendations = async (genreIds) => {
-  if (!genreIds.length) return [];
 
-  const url =
-    `${TMDB_BASE}/discover/movie?api_key=${TMDB_API_KEY}` +
-    `&with_genres=${genreIds.join(",")}` +
-    `&sort_by=popularity.desc`;
+  // --- TasteDive + TMDB Recommendations ------------------------------------
+  async function doFetchRecommendations(p1, p2, togetherMode) {
+    if (!p1.length || !p2.length) { setRecommendations([]); return; }
+    setLoading(true);
 
-  const data = await fetchJSON(url);
-  return data.results || [];
-}
-
-// --- TasteDive Cache ---
-const tasteDiveCache = {};
-
-// Fetch TasteDive results with caching
-const fetchTasteDive = async (movieName) => {
-  if (!movieName) return null;
-  if (tasteDiveCache[movieName]) return tasteDiveCache[movieName];
-
-  const url = `https://tastedive.com/api/similar?q=${encodeURIComponent(movieName)}&type=movies&info=1&k=${process.env.NEXT_PUBLIC_TASTEDIVE_KEY}`;
-  try {
-    const data = await fetchJSON(url);
-    tasteDiveCache[movieName] = data.Similar?.Results || [];
-    return tasteDiveCache[movieName];
-  } catch (e) {
-    console.error("TasteDive error:", e);
-    return [];
-  }
-};
-
-// --- Generate Recommendations ---
-const generateRecommendations = async ({
-  person1Movies,
-  person2Movies,
-  togethernessMode = "blend", // "blend" or "intersection"
-  hiddenMovieIds = new Set(),
-  setRecommendations,
-  setLoading,
-  streamingOnly = false
-}) => {
-  setLoading(true);
-
-  try {
-    // --- 1. Build genre sets ---
-    const person1Genres = new Set(person1Movies.flatMap(m => m.genres?.map(g => g.id) || []));
-    const person2Genres = new Set(person2Movies.flatMap(m => m.genres?.map(g => g.id) || []));
-    const allGenres = togethernessMode === "blend"
-      ? [...new Set([...person1Genres, ...person2Genres])]
-      : [...person1Genres].filter(g => person2Genres.has(g));
-
-    // --- 2. Collect initial TMDB recommendations ---
-    const allMovieCandidates = [];
-
-    const fetchPersonRecs = async (movies, personNum) => {
-      for (let movie of movies) {
-        const tdResults = await fetchTasteDive(movie.title);
-        for (let rec of tdResults) {
-          const id = rec.yID || rec.Name; // fallback if no ID
-          if (hiddenMovieIds.has(id)) continue;
-
-          // Compute weighting: who contributed this movie
-          const score = personNum === 1 ? 1 : 0.5; // adjust weights if desired
-          
-          allMovieCandidates.push({
-            id,
-            title: rec.Name,
-            tasteDiveReason: rec.wTeaser,
-            genres: rec.Genres || [],
-            score,
-            _hasStream: rec._hasStream || false // optional placeholder for streaming
-          });
+    try {
+      // Get a sample of movies from each person's list (max 5 each for API efficiency)
+      const sampleP1 = p1.slice(0, 5);
+      const sampleP2 = p2.slice(0, 5);
+      
+      const allTitles = [...sampleP1, ...sampleP2].map(m => m.title);
+      const existingIds = new Set([...p1, ...p2].map(m => m.id));
+      
+      // Fetch TasteDive recommendations for all movies
+      const tasteDivePromises = allTitles.map(async (title) => {
+        const url = `${TASTEDIVE_BASE}?q=${encodeURIComponent(title)}&type=movies&info=1&k=${TASTEDIVE_KEY}`;
+        try {
+          const data = await fetchJSON(url);
+          return data.Similar?.Results || [];
+        } catch (e) {
+          console.error(`TasteDive error for ${title}:`, e);
+          return [];
         }
+      });
+
+      const tasteDiveResults = await Promise.all(tasteDivePromises);
+      const flatResults = tasteDiveResults.flat();
+      
+      // Count frequency of recommendations
+      const recFrequency = {};
+      flatResults.forEach(rec => {
+        const name = rec.Name;
+        if (!recFrequency[name]) {
+          recFrequency[name] = { count: 0, data: rec };
+        }
+        recFrequency[name].count++;
+      });
+
+      // Convert TasteDive recommendations to TMDB movies
+      const tmdbPromises = Object.values(recFrequency)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 30) // Limit to top 30 by frequency
+        .map(async ({ data, count }) => {
+          try {
+            const tmdbMovie = await searchTMDBMovie(data.Name);
+            if (!tmdbMovie) return null;
+            
+            // Check if already in lists or hidden
+            if (existingIds.has(tmdbMovie.id)) return null;
+            if (hiddenMovieIds.has(tmdbMovie.id)) return null;
+            
+            // Check if allowed
+            if (!isAllowed(tmdbMovie)) return null;
+            
+            // Check rating and streaming
+            const [exclude, stream] = await Promise.all([
+              shouldExcludeMovie(tmdbMovie.id),
+              getStreamingInfo(tmdbMovie.id, selectedCountry)
+            ]);
+            
+            if (exclude) return null;
+            if (streamingOnly && stream.flatrate.length === 0) return null;
+            
+            return {
+              ...tmdbMovie,
+              _hasStream: stream.flatrate.length > 0,
+              _tdScore: count
+            };
+          } catch (e) {
+            console.error(`TMDB search error for ${data.Name}:`, e);
+            return null;
+          }
+        });
+
+      const tmdbResults = (await Promise.all(tmdbPromises)).filter(m => m !== null);
+      
+      // Apply togetherness mode filtering
+      let finalResults = tmdbResults;
+      if (togetherMode) {
+        const p1Genres = new Set(p1.flatMap(m => m.genre_ids || []));
+        const p2Genres = new Set(p2.flatMap(m => m.genre_ids || []));
+        const sharedGenres = [...p1Genres].filter(g => p2Genres.has(g));
+        
+        // Only keep movies that have at least one shared genre
+        finalResults = tmdbResults.filter(m => 
+          (m.genre_ids || []).some(g => sharedGenres.includes(g))
+        );
       }
-    };
-
-    await fetchPersonRecs(person1Movies, 1);
-    await fetchPersonRecs(person2Movies, 2);
-
-    // --- 3. Filter by genres & streaming if needed ---
-    const filtered = allMovieCandidates.filter(m => {
-      if (hiddenMovieIds.has(m.id)) return false;
-      if (streamingOnly && !m._hasStream) return false;
-      if (togethernessMode === "intersection") {
-        // keep movies that match at least one common genre
-        return m.genres.some(g => allGenres.includes(g));
-      }
-      return true; // blend mode keeps all
-    });
-
-    // --- 4. Aggregate duplicate recommendations ---
-    const recMap = {};
-    filtered.forEach(m => {
-      if (!recMap[m.id]) recMap[m.id] = { ...m };
-      else recMap[m.id].score += m.score; // sum scores for weighting
-    });
-
-    // --- 5. Sort by score (higher = more relevant) ---
-    const sorted = Object.values(recMap).sort((a, b) => b.score - a.score);
-
-    setRecommendations(sorted);
-  } catch (err) {
-    console.error("Recommendation generation failed:", err);
-    setRecommendations([]);
-  } finally {
+      
+      // Sort by TasteDive frequency score + randomization
+      finalResults.forEach(m => {
+        m._finalScore = (m._tdScore || 0) * 10 + Math.random() * 5;
+      });
+      finalResults.sort((a, b) => b._finalScore - a._finalScore);
+      
+      setRecommendations(finalResults.slice(0, 12));
+    } catch (e) {
+      console.error("Recommendations error:", e);
+      setRecommendations([]);
+    }
+    
     setLoading(false);
   }
-};
+
+  useEffect(() => {
+    if (person1Movies.length > 0 && person2Movies.length > 0) {
+      doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
+    }
+  }, [person1Movies, person2Movies, togethernessMode, recsKey, streamingOnly, selectedCountry]);
 
   // ===========================================================================
   // SUB-COMPONENTS
@@ -489,7 +476,6 @@ const generateRecommendations = async ({
             <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
           </div>
         )}
-        {/* X button for hiding recommendations - replaces rating badge */}
         {removeFromRecs && (
           <button 
             onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
@@ -499,13 +485,11 @@ const generateRecommendations = async ({
             <X className="w-4 h-4 text-white stroke-[3]"/>
           </button>
         )}
-        {/* Streaming badge */}
         {movie._hasStream && !removeFromRecs && (
           <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
             <span className="text-xs font-semibold text-white">▶ Stream</span>
           </div>
         )}
-        {/* Match indicator badge */}
         {matchIndicator && (
           <div className={`absolute bottom-3 left-3 rounded-lg px-2 py-0.5 ${ 
             matchIndicator === "person1" ? "bg-blue-600/90" :
@@ -521,7 +505,6 @@ const generateRecommendations = async ({
         )}
       </div>
       <div className="p-4">
-        {/* Show match indicator as text label too for clarity */}
         {matchIndicator && (
           <div className={`text-xs font-semibold mb-2 ${
             matchIndicator === "person1" ? "text-blue-400" :
@@ -778,13 +761,9 @@ const generateRecommendations = async ({
               <button onClick={()=>setShowSaveModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Film className="w-5 h-5"/> Save Lists</button>
               <button onClick={()=>setShowLoadModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Play className="w-5 h-5"/> Load Lists</button>
               <button onClick={()=>{if(compatibilityScore!==null)setShowCompatibilityModal(true);}} disabled={!person1Movies.length||!person2Movies.length} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"><BarChart3 className="w-5 h-5"/> {compatibilityScore!==null?`${compatibilityScore}%`:"Stats"}</button>
-
-              {/* Streaming Only toggle */}
               <button onClick={()=>setStreamingOnly(v=>!v)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${streamingOnly?"text-white shadow-lg shadow-green-500/40":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={streamingOnly?{background:"linear-gradient(to right, #16a34a, #15803d)"}:{}}>
                 <Play className="w-5 h-5"/> Streaming Only
               </button>
-
-              {/* Togetherness toggle */}
               <button onClick={()=>setTogethernessMode(!togethernessMode)} className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${togethernessMode?"text-white shadow-lg shadow-purple-500/50":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={togethernessMode?{background:"linear-gradient(to right, #db2777, #7c3aed)"}:{}}>
                 <Sparkles className="w-5 h-5" fill={togethernessMode?"currentColor":undefined}/> Togetherness
                 {compatibilityScore!==null&&togethernessMode && <span className="ml-1 bg-white/20 px-2 py-0.5 rounded-full text-xs">{compatibilityScore}%</span>}
@@ -879,7 +858,7 @@ const generateRecommendations = async ({
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ 
                 setRecommendations([]);
-                setHiddenMovieIds(new Set()); // Clear hidden list for fresh start
+                setHiddenMovieIds(new Set());
                 setLoading(true);
                 setRecsKey(k => k+1);
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
