@@ -884,14 +884,3 @@ export default function MovieTracker() {
     </div>
   );
 }
-
-        {/* Modals */}
-        {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
-        {showSaveModal && <SaveModal/>}
-        {showLoadModal && <LoadModal/>}
-        {showCompatibilityModal && <CompatibilityModal/>}
-        {showExportModal && <ExportModal/>}
-      </div>
-    </div>
-  );
-}
