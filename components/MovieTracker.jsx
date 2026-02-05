@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v2.6 - X button in top-right corner for hiding recommendations
+// MovieMatch v3.1 - X button cache break test
 
 import { useState, useEffect } from "react";
 
@@ -454,26 +454,20 @@ export default function MovieTracker() {
           ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
           : <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-zinc-600"/></div>
         }
-        {movie.vote_average>0 && (
+        {movie.vote_average>0 && !removeFromRecs && (
           <div className="absolute top-3 right-3 bg-black/80 rounded-lg px-2 py-1 flex items-center gap-1">
             <Star className="w-3 h-3 text-yellow-400" fill="#facc15"/>
             <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
           </div>
         )}
-        {/* Hide button for recommendations - top right corner */}
+        {/* X button for hiding recommendations - replaces rating badge */}
         {removeFromRecs && (
           <button 
             onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
-            className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 rounded-full p-1.5 transition-colors z-10"
+            className="absolute top-3 right-3 bg-red-600 hover:bg-red-500 rounded-full p-2 transition-all shadow-lg hover:scale-110"
             title="Hide this recommendation"
           >
-            <X className="w-4 h-4 text-white"/>
-          </button>
-        )}
-        {/* Hide button for recommendations - X in top-right */}
-        {removeFromRecs && (
-          <button onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} className="absolute top-3 right-3 bg-red-600/90 hover:bg-red-500 rounded-full p-1.5 transition-colors z-10" title="Hide this recommendation">
-            <X className="w-3 h-3 text-white"/>
+            <X className="w-4 h-4 text-white stroke-[3]"/>
           </button>
         )}
         {/* Streaming badge */}
@@ -872,6 +866,25 @@ export default function MovieTracker() {
               </div>
             ) : (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+                <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
+                <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
+                <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Modals */}
+        {selectedMovie && <MovieModal movie={selectedMovie} onClose={()=>setSelectedMovie(null)}/>}
+        {showSaveModal && <SaveModal/>}
+        {showLoadModal && <LoadModal/>}
+        {showCompatibilityModal && <CompatibilityModal/>}
+        {showExportModal && <ExportModal/>}
+      </div>
+    </div>
+  );
+}
+           <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
                 <Sparkles className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
                 <p className="text-zinc-500 text-lg mb-2">Add movies to both lists to get personalized recommendations</p>
                 <p className="text-zinc-600 text-sm">The more movies you add, the better the recommendations!</p>
