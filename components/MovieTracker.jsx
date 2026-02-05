@@ -102,6 +102,17 @@ async function getStreamingInfo(movieId, country = "US") {
     return { flatrate: [], rent: [], buy: [] };
   }
 }
+// --- Tastedive recommendations helper --------------------------------------------------------
+function dedupeById(list) {
+  const seen = new Set();
+  return list.filter(m => {
+    if (!m?.id) return false;
+    if (seen.has(m.id)) return false;
+    seen.add(m.id);
+    return true;
+  });
+}
+
 
 // --- Main Component ----------------------------------------------------------
 export default function MovieTracker() {
@@ -453,35 +464,43 @@ export default function MovieTracker() {
     setLoading(false);
   }
 async function doFetchRecommendations(p1, p2, togetherMode) {
-  try {
-    const tasteResults = await fetchTasteDiveRecommendations(p1, p2);
+  console.log("Recs start", p1.length, p2.length);
 
-    // guard — if weak results → fallback
-    if (!tasteResults || tasteResults.length < 6) {
-      console.log("TasteDive weak — using TMDB fallback");
-      return doFetchRecommendationsTMDB(p1, p2, togetherMode);
-    }
-
-    // dedupe + filter against existing lists
-    const existingIds = new Set([...p1, ...p2].map(m => m.id));
-    const unique = [];
-    const seen = new Set();
-
-    for (const m of tasteResults) {
-      if (seen.has(m.id)) continue;
-      if (existingIds.has(m.id)) continue;
-      if (hiddenMovieIds.has(m.id)) continue;
-      seen.add(m.id);
-      unique.push(m);
-    }
-
-    setRecommendations(unique.slice(0, 12));
-
-  } catch (err) {
-    console.log("TasteDive failed — using TMDB fallback");
-    return doFetchRecommendationsTMDB(p1, p2, togetherMode);
+  if (!p1.length || !p2.length) {
+    console.log("Lists incomplete — skipping");
+    setRecommendations([]);
+    return;
   }
+
+  setLoading(true);
+
+  try {
+    let taste = [];
+
+    try {
+      taste = await fetchTasteDiveRecommendations(p1, p2);
+      console.log("TasteDive returned:", taste?.length);
+    } catch (e) {
+      console.log("TasteDive error — fallback");
+    }
+
+    if (taste && taste.length >= 6) {
+      setRecommendations(dedupeById(taste).slice(0,12));
+      setLoading(false);
+      return;
+    }
+
+    console.log("Running TMDB fallback");
+    await doFetchRecommendationsTMDB(p1, p2, togetherMode);
+
+  } catch (e) {
+    console.error("Wrapper crash — TMDB fallback", e);
+    await doFetchRecommendationsTMDB(p1, p2, togetherMode);
+  }
+
+  setLoading(false);
 }
+
 
   useEffect(() => {
     if (person1Movies.length > 0 && person2Movies.length > 0) {
