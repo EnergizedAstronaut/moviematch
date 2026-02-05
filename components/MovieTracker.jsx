@@ -375,61 +375,102 @@ export default function MovieTracker() {
   return data.results || [];
 }
 
+// --- TasteDive Cache ---
+const tasteDiveCache = {};
 
-  // --- Recommendations -----------------------------------------------------
+// Fetch TasteDive results with caching
+const fetchTasteDive = async (movieName) => {
+  if (!movieName) return null;
+  if (tasteDiveCache[movieName]) return tasteDiveCache[movieName];
+
+  const url = `https://tastedive.com/api/similar?q=${encodeURIComponent(movieName)}&type=movies&info=1&k=${process.env.NEXT_PUBLIC_TASTEDIVE_KEY}`;
+  try {
+    const data = await fetchJSON(url);
+    tasteDiveCache[movieName] = data.Similar?.Results || [];
+    return tasteDiveCache[movieName];
+  } catch (e) {
+    console.error("TasteDive error:", e);
+    return [];
+  }
+};
+
+// --- Generate Recommendations ---
 const generateRecommendations = async ({
   person1Movies,
   person2Movies,
-  togethernessMode,
-  hiddenMovieIds,
+  togethernessMode = "blend", // "blend" or "intersection"
+  hiddenMovieIds = new Set(),
   setRecommendations,
-  setLoading
+  setLoading,
+  streamingOnly = false
 }) => {
+  setLoading(true);
+
   try {
-    setLoading(true);
+    // --- 1. Build genre sets ---
+    const person1Genres = new Set(person1Movies.flatMap(m => m.genres?.map(g => g.id) || []));
+    const person2Genres = new Set(person2Movies.flatMap(m => m.genres?.map(g => g.id) || []));
+    const allGenres = togethernessMode === "blend"
+      ? [...new Set([...person1Genres, ...person2Genres])]
+      : [...person1Genres].filter(g => person2Genres.has(g));
 
-    const p1Titles = person1Movies.map(m => m.title);
-    const p2Titles = person2Movies.map(m => m.title);
+    // --- 2. Collect initial TMDB recommendations ---
+    const allMovieCandidates = [];
 
-    // --- TOGETHERNESS MODE (shared genres) -------------------------------
-    if (togethernessMode) {
-      const p1Genres = person1Movies.flatMap(m => m.genre_ids || []);
-      const p2Genres = person2Movies.flatMap(m => m.genre_ids || []);
+    const fetchPersonRecs = async (movies, personNum) => {
+      for (let movie of movies) {
+        const tdResults = await fetchTasteDive(movie.title);
+        for (let rec of tdResults) {
+          const id = rec.yID || rec.Name; // fallback if no ID
+          if (hiddenMovieIds.has(id)) continue;
 
-      const sharedGenres = [...new Set(
-        p1Genres.filter(g => p2Genres.includes(g))
-      )];
+          // Compute weighting: who contributed this movie
+          const score = personNum === 1 ? 1 : 0.5; // adjust weights if desired
+          
+          allMovieCandidates.push({
+            id,
+            title: rec.Name,
+            tasteDiveReason: rec.wTeaser,
+            genres: rec.Genres || [],
+            score,
+            _hasStream: rec._hasStream || false // optional placeholder for streaming
+          });
+        }
+      }
+    };
 
-      const genreRecs = await getGenreRecommendations(sharedGenres);
+    await fetchPersonRecs(person1Movies, 1);
+    await fetchPersonRecs(person2Movies, 2);
 
-      setRecommendations(
-        genreRecs.filter(m => !hiddenMovieIds.has(m.id)).slice(0, 24)
-      );
-      return;
-    }
+    // --- 3. Filter by genres & streaming if needed ---
+    const filtered = allMovieCandidates.filter(m => {
+      if (hiddenMovieIds.has(m.id)) return false;
+      if (streamingOnly && !m._hasStream) return false;
+      if (togethernessMode === "intersection") {
+        // keep movies that match at least one common genre
+        return m.genres.some(g => allGenres.includes(g));
+      }
+      return true; // blend mode keeps all
+    });
 
-    // --- NORMAL MODE (TasteDive + TMDB) ---------------------------------
-    const seedTitles = [...new Set([...p1Titles, ...p2Titles])];
+    // --- 4. Aggregate duplicate recommendations ---
+    const recMap = {};
+    filtered.forEach(m => {
+      if (!recMap[m.id]) recMap[m.id] = { ...m };
+      else recMap[m.id].score += m.score; // sum scores for weighting
+    });
 
-    const tasteDiveTitles = await getTasteDiveMovies(seedTitles);
+    // --- 5. Sort by score (higher = more relevant) ---
+    const sorted = Object.values(recMap).sort((a, b) => b.score - a.score);
 
-    const tmdbResults = await Promise.all(
-      tasteDiveTitles.map(title => searchTMDBMovie(title))
-    );
-
-    const cleaned = tmdbResults
-      .filter(Boolean)
-      .filter(m => !hiddenMovieIds.has(m.id));
-
-    setRecommendations(cleaned.slice(0, 24));
-
+    setRecommendations(sorted);
   } catch (err) {
-    console.error("Recommendation error:", err);
+    console.error("Recommendation generation failed:", err);
+    setRecommendations([]);
   } finally {
     setLoading(false);
   }
 };
-;
 
   // ===========================================================================
   // SUB-COMPONENTS
