@@ -1,5 +1,5 @@
 "use client";
-// MovieMatch v2.5 - Hide button repositioned above action buttons
+// MovieMatch v2.6 - X button in top-right corner for hiding recommendations
 
 import { useState, useEffect } from "react";
 
@@ -460,6 +460,22 @@ export default function MovieTracker() {
             <span className="text-xs font-semibold text-white">{movie.vote_average.toFixed(1)}</span>
           </div>
         )}
+        {/* Hide button for recommendations - top right corner */}
+        {removeFromRecs && (
+          <button 
+            onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
+            className="absolute top-2 right-2 bg-red-600/90 hover:bg-red-500 rounded-full p-1.5 transition-colors z-10"
+            title="Hide this recommendation"
+          >
+            <X className="w-4 h-4 text-white"/>
+          </button>
+        )}
+        {/* Hide button for recommendations - X in top-right */}
+        {removeFromRecs && (
+          <button onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} className="absolute top-3 right-3 bg-red-600/90 hover:bg-red-500 rounded-full p-1.5 transition-colors z-10" title="Hide this recommendation">
+            <X className="w-3 h-3 text-white"/>
+          </button>
+        )}
         {/* Streaming badge */}
         {movie._hasStream && (
           <div className="absolute top-3 left-3 bg-green-600/90 rounded-lg px-2 py-0.5">
@@ -496,11 +512,6 @@ export default function MovieTracker() {
         )}
         <h3 className="font-semibold text-white text-sm mb-1" style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{movie.title}</h3>
         <p className="text-zinc-500 text-xs mb-3">{movie.release_date?.split("-")[0]||"N/A"}</p>
-        {removeFromRecs && (
-          <button onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} className="w-full bg-zinc-700/50 hover:bg-zinc-700 text-zinc-300 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors mb-2">
-            <X className="w-3 h-3"/> Hide
-          </button>
-        )}
         {showActions && (
           <div className="flex gap-2">
             {!isInPerson1(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,1);}} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person1Name}</button>}
