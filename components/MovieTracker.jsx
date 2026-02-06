@@ -130,6 +130,14 @@ export default function MovieTracker() {
 
   // NEW: streaming toggle
   const [streamingOnly, setStreamingOnly] = useState(false);
+  
+  // NEW: watchlist and UI features
+  const [watchlist, setWatchlist] = useState([]);
+  const [darkMode, setDarkMode] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  const [genreFilter, setGenreFilter] = useState(new Set());
+  const [runtimeFilter, setRuntimeFilter] = useState("all"); // "all", "short", "medium", "long"
+  const [decadeFilter, setDecadeFilter] = useState("all");
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
@@ -432,6 +440,65 @@ export default function MovieTracker() {
     // Remove from current recommendations
     setRecommendations(recommendations.filter(m => m.id !== id));
   }
+  
+  // --- Watchlist helpers ---------------------------------------------------
+  function addToWatchlist(movie) {
+    if (watchlist.some(m => m.id === movie.id)) return;
+    setWatchlist([...watchlist, { ...movie, addedAt: new Date().toISOString() }]);
+  }
+  
+  function removeFromWatchlist(id) {
+    setWatchlist(watchlist.filter(m => m.id !== id));
+  }
+  
+  function moveWatchlistToSeen(movie, personNum) {
+    removeFromWatchlist(movie.id);
+    addMovieToPerson(movie, personNum);
+  }
+  
+  // --- Filter helpers ------------------------------------------------------
+  function toggleGenreFilter(genreId) {
+    const newFilter = new Set(genreFilter);
+    if (newFilter.has(genreId)) {
+      newFilter.delete(genreId);
+    } else {
+      newFilter.add(genreId);
+    }
+    setGenreFilter(newFilter);
+  }
+  
+  function getFilteredRecommendations() {
+    let filtered = [...recommendations];
+    
+    // Genre filter
+    if (genreFilter.size > 0) {
+      filtered = filtered.filter(m => 
+        m.genre_ids?.some(g => genreFilter.has(g))
+      );
+    }
+    
+    // Runtime filter
+    if (runtimeFilter !== "all") {
+      filtered = filtered.filter(m => {
+        const runtime = m.runtime || 100; // Estimate if not available
+        if (runtimeFilter === "short") return runtime < 90;
+        if (runtimeFilter === "medium") return runtime >= 90 && runtime <= 150;
+        if (runtimeFilter === "long") return runtime > 150;
+        return true;
+      });
+    }
+    
+    // Decade filter
+    if (decadeFilter !== "all") {
+      filtered = filtered.filter(m => {
+        const year = parseInt((m.release_date || "0").slice(0, 4));
+        const decade = Math.floor(year / 10) * 10;
+        return decade.toString() === decadeFilter;
+      });
+    }
+    
+    return filtered;
+  }
 
   // --- Compatibility -------------------------------------------------------
   function calcCompatibilityScore() {
@@ -653,7 +720,10 @@ export default function MovieTracker() {
   // SUB-COMPONENTS
   // ===========================================================================
 
-  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null}) => (
+  const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null,fromWatchlist=false}) => {
+    const isInWatchlist = watchlist.some(m => m.id === movie.id);
+    
+    return (
     <div className="group relative bg-zinc-900/50 rounded-xl overflow-visible border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800 rounded-xl" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
@@ -713,12 +783,35 @@ export default function MovieTracker() {
         )}
         <h3 className="font-semibold text-white text-sm mb-1" style={{display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden"}}>{movie.title}</h3>
         <p className="text-zinc-500 text-xs mb-3">{movie.release_date?.split("-")[0]||"N/A"}</p>
-        {showActions && (
-          <div className="flex gap-2">
-            {!isInPerson1(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,1);}} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person1Name}</button>}
-            {!isInPerson2(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,2);}} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person2Name}</button>}
+        
+        {/* Watchlist actions */}
+        {fromWatchlist && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              {!isInPerson1(movie.id) && <button onClick={e=>{e.stopPropagation();moveWatchlistToSeen(movie,1);}} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">Seen by {person1Name.split(" ")[0]}</button>}
+              {!isInPerson2(movie.id) && <button onClick={e=>{e.stopPropagation();moveWatchlistToSeen(movie,2);}} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">Seen by {person2Name.split(" ")[0]}</button>}
+            </div>
+            <button onClick={e=>{e.stopPropagation();removeFromWatchlist(movie.id);}} className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
+              <X className="w-3 h-3"/> Remove
+            </button>
           </div>
         )}
+        
+        {/* Regular actions */}
+        {showActions && !fromWatchlist && (
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              {!isInPerson1(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,1);}} className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person1Name.split(" ")[0]}</button>}
+              {!isInPerson2(movie.id) && <button onClick={e=>{e.stopPropagation();addMovieToPerson(movie,2);}} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white text-xs font-medium px-3 py-2 rounded-lg transition-colors">{person2Name.split(" ")[0]}</button>}
+            </div>
+            {!isInWatchlist && (
+              <button onClick={e=>{e.stopPropagation();addToWatchlist(movie);}} className="w-full bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
+                <Plus className="w-3 h-3"/> Watchlist
+              </button>
+            )}
+          </div>
+        )}
+        
         {personNum && (
           <button onClick={e=>{e.stopPropagation();removeMovieFromPerson(movie.id,personNum);}} className="w-full bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium px-3 py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
             <X className="w-3 h-3"/> Remove
@@ -727,6 +820,7 @@ export default function MovieTracker() {
       </div>
     </div>
   );
+  };
 
   // --- MovieModal ----------------------------------------------------------
   const MovieModal = ({movie,onClose}) => {
@@ -1067,6 +1161,7 @@ export default function MovieTracker() {
           {[
             {id:"search",icon:Search,label:"Discover"},
             {id:"compare",icon:Users,label:"Your Lists"},
+            {id:"watchlist",icon:Star,label:"Watchlist"},
             {id:"recommendations",icon:Heart,label:"For You"},
           ].map(tab=>(
             <button key={tab.id} onClick={()=>{
@@ -1075,6 +1170,7 @@ export default function MovieTracker() {
             }} className={`px-6 py-3 rounded-t-lg font-medium transition-all flex items-center gap-2 ${activeTab===tab.id?"bg-zinc-900 text-white border-b-2 border-red-500":"text-zinc-500 hover:text-zinc-300"}`}>
               <tab.icon className="w-5 h-5"/> {tab.label}
               {tab.id==="compare"&&commonMovies.length>0 && <span className="bg-pink-600 text-white text-xs px-2 py-0.5 rounded-full">{commonMovies.length}</span>}
+              {tab.id==="watchlist"&&watchlist.length>0 && <span className="bg-yellow-600 text-white text-xs px-2 py-0.5 rounded-full">{watchlist.length}</span>}
             </button>
           ))}
         </div>
@@ -1117,6 +1213,29 @@ export default function MovieTracker() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* WATCHLIST */}
+        {activeTab==="watchlist"&&!loading && (
+          <div className="space-y-6">
+            <div className="rounded-2xl p-8 border border-yellow-900/20" style={{background:"linear-gradient(to right, rgba(161,98,7,0.15), rgba(180,83,9,0.15))"}}>
+              <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Star className="w-7 h-7 text-yellow-400" fill="#facc15"/>Want to Watch Together</h2>
+              <p className="text-zinc-400 mb-2">Movies you're planning to watch • {watchlist.length} {watchlist.length === 1 ? 'movie' : 'movies'}</p>
+            </div>
+            
+            {watchlist.length>0 ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                {watchlist.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} fromWatchlist={true}/>)}
+              </div>
+            ) : (
+              <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
+                <Star className="w-16 h-16 text-zinc-700 mx-auto mb-4"/>
+                <p className="text-zinc-500 text-lg mb-2">Your watchlist is empty</p>
+                <p className="text-zinc-600 text-sm mb-4">Add movies from recommendations or search to create your watch list</p>
+                <button onClick={()=>setActiveTab("recommendations")} className="text-yellow-400 hover:text-yellow-300 font-medium">Browse Recommendations →</button>
+              </div>
+            )}
           </div>
         )}
 
