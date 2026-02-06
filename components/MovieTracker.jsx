@@ -138,6 +138,7 @@ export default function MovieTracker() {
   const [genreFilter, setGenreFilter] = useState(new Set());
   const [runtimeFilter, setRuntimeFilter] = useState("all"); // "all", "short", "medium", "long"
   const [decadeFilter, setDecadeFilter] = useState("all");
+  const [moodFilter, setMoodFilter] = useState("all"); // "all", "feel-good", "intense", "thoughtful"
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
@@ -497,7 +498,57 @@ export default function MovieTracker() {
       });
     }
     
+    // Mood filter (based on genres)
+    if (moodFilter !== "all") {
+      filtered = filtered.filter(m => {
+        const genres = m.genre_ids || [];
+        if (moodFilter === "feel-good") {
+          // Comedy, Romance, Family, Animation
+          return genres.some(g => [35, 10749, 10751, 16].includes(g));
+        }
+        if (moodFilter === "intense") {
+          // Action, Thriller, Horror, War
+          return genres.some(g => [28, 53, 27, 10752].includes(g));
+        }
+        if (moodFilter === "thoughtful") {
+          // Drama, Documentary, Mystery, History
+          return genres.some(g => [18, 99, 9648, 36].includes(g));
+        }
+        return true;
+      });
+    }
+    
     return filtered;
+  }
+  
+  // Analyze decade preferences
+  function getDecadePreferences(movies) {
+    const decades = {};
+    movies.forEach(m => {
+      const year = parseInt((m.release_date || "0").slice(0, 4));
+      const decade = Math.floor(year / 10) * 10;
+      if (decade >= 1980) {
+        decades[decade] = (decades[decade] || 0) + 1;
+      }
+    });
+    return decades;
+  }
+  
+  // Get top decades both people like
+  function getSharedDecadePreferences() {
+    const p1Decades = getDecadePreferences(person1Movies);
+    const p2Decades = getDecadePreferences(person2Movies);
+    const shared = {};
+    
+    Object.keys(p1Decades).forEach(decade => {
+      if (p2Decades[decade]) {
+        shared[decade] = p1Decades[decade] + p2Decades[decade];
+      }
+    });
+    
+    return Object.entries(shared)
+      .sort((a, b) => b[1] - a[1])
+      .map(([decade]) => parseInt(decade));
   }
 
   // --- Compatibility -------------------------------------------------------
@@ -689,8 +740,17 @@ export default function MovieTracker() {
         //  with providers from the existing lists — simplified: just bonus for having flatrate)
         let finalScore = movie._score || 0;
         if (stream.flatrate.length > 0) finalScore += 15;
-        // reinforce recency at final sort so it isn't washed out by streaming bonus
+        
+        // Decade preference bonus - boost movies from decades both people like
         const finalYr = parseInt((movie.release_date || "0").slice(0,4));
+        const decade = Math.floor(finalYr / 10) * 10;
+        const sharedDecades = getSharedDecadePreferences();
+        if (sharedDecades.includes(decade)) {
+          const decadeRank = sharedDecades.indexOf(decade);
+          finalScore += decadeRank === 0 ? 40 : decadeRank === 1 ? 25 : 15;
+        }
+        
+        // reinforce recency at final sort so it isn't washed out by streaming bonus
         finalScore += finalYr >= 2025 ? 80 : finalYr >= 2024 ? 65 : finalYr >= 2023 ? 45 : finalYr >= 2022 ? 25 : 0;
         // Add randomization so each refresh gives different results
         finalScore += Math.random() * 100;
@@ -1255,7 +1315,7 @@ export default function MovieTracker() {
             )}
             <div className="rounded-2xl p-8 border border-purple-900/20" style={{background:"linear-gradient(to right, rgba(88,28,135,0.15), rgba(162,17,76,0.15))"}}>
               <h2 className="text-2xl font-bold mb-3 flex items-center gap-3"><Heart className="w-7 h-7 text-pink-400"/>{togethernessMode?"Perfect for Both of You":"Recommended for You"}</h2>
-              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"} {recommendations.length > 0 && `• ${recommendations.length} movies`}</p>
+              <p className="text-zinc-400 mb-2">{togethernessMode?"Based on shared genres":"Based on genres from both lists"} {recommendations.length > 0 && `• ${getFilteredRecommendations().length} of ${recommendations.length} movies`}</p>
               {streamingOnly && <p className="text-green-400 text-sm mb-4">🎬 Showing only movies available to stream</p>}
               <button onClick={()=>{ 
                 setRecommendations([]);
@@ -1263,15 +1323,108 @@ export default function MovieTracker() {
                 setLoading(true);
                 setRecsKey(k => k+1);
               }} className="text-white font-semibold px-6 py-3 rounded-xl" style={{background:"linear-gradient(to right, #ca8a04, #ea580c)"}}>Refresh Recommendations</button>
+              
+              {/* Quick Filters */}
+              <div className="mt-6 pt-6 border-t border-zinc-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Quick Filters</h3>
+                  <button 
+                    onClick={() => {
+                      setRuntimeFilter("all");
+                      setDecadeFilter("all");
+                      setMoodFilter("all");
+                      setGenreFilter(new Set());
+                    }}
+                    className="text-sm text-zinc-400 hover:text-white transition"
+                  >
+                    Clear All
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Runtime Filter */}
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-2 block">Runtime</label>
+                    <select 
+                      value={runtimeFilter} 
+                      onChange={(e) => setRuntimeFilter(e.target.value)}
+                      className="w-full bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="all">All Lengths</option>
+                      <option value="short">Short (&lt; 90 min)</option>
+                      <option value="medium">Medium (90-150 min)</option>
+                      <option value="long">Epic (150+ min)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Decade Filter */}
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-2 block">Decade</label>
+                    <select 
+                      value={decadeFilter} 
+                      onChange={(e) => setDecadeFilter(e.target.value)}
+                      className="w-full bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="all">All Decades</option>
+                      <option value="2020">2020s</option>
+                      <option value="2010">2010s</option>
+                      <option value="2000">2000s</option>
+                      <option value="1990">1990s</option>
+                      <option value="1980">1980s</option>
+                    </select>
+                  </div>
+                  
+                  {/* Mood Filter */}
+                  <div>
+                    <label className="text-xs text-zinc-500 mb-2 block">Mood</label>
+                    <select 
+                      value={moodFilter} 
+                      onChange={(e) => setMoodFilter(e.target.value)}
+                      className="w-full bg-zinc-800 border border-zinc-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="all">Any Mood</option>
+                      <option value="feel-good">Feel-Good</option>
+                      <option value="intense">Intense</option>
+                      <option value="thoughtful">Thoughtful</option>
+                    </select>
+                  </div>
+                </div>
+                
+                {/* Active filters indicator */}
+                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all") && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {runtimeFilter !== "all" && (
+                      <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
+                        {runtimeFilter === "short" ? "< 90 min" : runtimeFilter === "medium" ? "90-150 min" : "150+ min"}
+                      </span>
+                    )}
+                    {decadeFilter !== "all" && (
+                      <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
+                        {decadeFilter}s
+                      </span>
+                    )}
+                    {moodFilter !== "all" && (
+                      <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
+                        {moodFilter.charAt(0).toUpperCase() + moodFilter.slice(1).replace("-", " ")}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             {recommendations.length>0 ? (
               <div>
+                {getFilteredRecommendations().length < 4 && recommendations.length >= 4 && (
+                  <div className="mb-4 bg-blue-900/20 border border-blue-600/30 rounded-lg p-4 text-center">
+                    <p className="text-blue-400 text-sm">Filters are hiding some movies. <button onClick={() => {setRuntimeFilter("all");setDecadeFilter("all");setMoodFilter("all");}} className="underline font-semibold">Clear filters</button> to see all {recommendations.length} recommendations.</p>
+                  </div>
+                )}
                 {recommendations.length < 4 && (
                   <div className="mb-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 text-center">
                     <p className="text-yellow-400 text-sm">Running low on recommendations! Click <strong>Refresh</strong> to load more.</p>
                   </div>
                 )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{recommendations.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{getFilteredRecommendations().map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions matchIndicator={!togethernessMode ? getRecommendationMatch(m) : null} removeFromRecs={removeFromRecommendations}/>)}</div>
               </div>
             ) : (
               <div className="text-center py-20 bg-zinc-900/30 rounded-2xl border border-zinc-800">
