@@ -23,6 +23,8 @@ const Zap = (p) => { const {fill:f,...rest}=p||{}; return <svg {...iconBase} {..
 // --- Constants ---------------------------------------------------------------
 const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+const TASTEDIVE_API_KEY = "1068398-Moviemat-42500EF7";
+const TASTEDIVE_BASE_URL = "https://tastedive.com/api/similar";
 
 const COUNTRIES = [
   {code:"US",name:"United States",flag:"🇺🇸"},{code:"GB",name:"United Kingdom",flag:"🇬🇧"},
@@ -213,6 +215,57 @@ export default function MovieTracker() {
     } catch { return false; }
   }
 
+  // --- TasteDive helper ----------------------------------------------------
+  async function fetchTasteDiveRecommendations(movieTitles, hiddenIds) {
+    try {
+      const seedTitles = movieTitles.slice(0, 5).join(",");
+      const url = `${TASTEDIVE_BASE_URL}?q=${encodeURIComponent(seedTitles)}&type=movies&k=${TASTEDIVE_API_KEY}&info=1&limit=20`;
+      
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if (!data?.Similar?.Results || data.Similar.Results.length === 0) {
+        return [];
+      }
+      
+      const tmdbPromises = data.Similar.Results.map(async (result) => {
+        try {
+          const searchRes = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(result.Name)}`);
+          const searchData = await searchRes.json();
+          const movie = searchData.results?.[0];
+          
+          if (!movie || hiddenIds.has(movie.id)) return null;
+          if (!isAllowed(movie)) return null;
+          
+          const year = parseInt((movie.release_date || "0").slice(0, 4));
+          if (year < 1985) return null;
+          
+          const [exclude, stream] = await Promise.all([
+            shouldExcludeMovie(movie.id),
+            getStreamingInfo(movie.id, selectedCountry)
+          ]);
+          
+          if (exclude) return null;
+          if (streamingOnly && stream.flatrate.length === 0) return null;
+          
+          return {
+            ...movie,
+            _hasStream: stream.flatrate.length > 0,
+            _tdScore: 1
+          };
+        } catch {
+          return null;
+        }
+      });
+      
+      const results = await Promise.all(tmdbPromises);
+      return results.filter(m => m !== null);
+    } catch (error) {
+      console.error("TasteDive error:", error);
+      return [];
+    }
+  }
+
   async function fetchTrending() {
     setLoading(true);
     try {
@@ -283,33 +336,6 @@ export default function MovieTracker() {
     } catch(e) {}
     setLoading(false);
   }
-   // --- MPAA Helpers --------------------------------------------------------
-async function getContentRating(movieId) {
-  try {
-    const res = await fetch(
-      `${TMDB_BASE_URL}/movie/${movieId}/release_dates?api_key=${TMDB_API_KEY}`
-    );
-    const data = await res.json();
-
-    const us = data.results?.find(r => r.iso_3166_1 === "US");
-    if (!us) return "NR";
-
-    const certs = us.release_dates
-      .map(r => r.certification)
-      .filter(Boolean);
-
-    if (!certs.length) return "NR";
-
-    // pick most restrictive if multiple
-    const order = ["G","PG","PG-13","R","NC-17"];
-    certs.sort((a,b)=>order.indexOf(b)-order.indexOf(a));
-
-    return certs[0];
-
-  } catch {
-    return "NR";
-  }
-}
 
   // --- List Helpers --------------------------------------------------------
   function addMovieToPerson(movie, num) {
@@ -372,8 +398,57 @@ async function getContentRating(movieId) {
     return Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
   }
 
-  // --- Recommendations -----------------------------------------------------
+  // --- Recommendations (TasteDive with TMDB fallback) ----------------------
   async function doFetchRecommendations(p1, p2, togetherMode) {
+    if (!p1.length || !p2.length) { 
+      setRecommendations([]); 
+      return; 
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Try TasteDive first
+      const allMovieTitles = [...p1, ...p2].map(m => m.title);
+      const existingIds = new Set([...p1, ...p2].map(m => m.id));
+      
+      console.log("Trying TasteDive...");
+      const tasteDiveResults = await fetchTasteDiveRecommendations(
+        allMovieTitles,
+        new Set([...hiddenMovieIds, ...existingIds])
+      );
+      
+      // If TasteDive returns good results (6+), use them
+      if (tasteDiveResults && tasteDiveResults.length >= 6) {
+        console.log(`TasteDive success: ${tasteDiveResults.length} movies`);
+        
+        // Dedupe and limit to 12
+        const seen = new Set();
+        const unique = [];
+        for (const m of tasteDiveResults) {
+          if (!seen.has(m.id) && unique.length < 12) {
+            seen.add(m.id);
+            unique.push(m);
+          }
+        }
+        
+        setRecommendations(unique);
+        setLoading(false);
+        return;
+      }
+      
+      // Fall back to TMDB if TasteDive failed or returned too few
+      console.log("TasteDive insufficient, using TMDB fallback...");
+      await doFetchRecommendationsTMDB(p1, p2, togetherMode);
+      
+    } catch (error) {
+      console.error("TasteDive error, using TMDB fallback:", error);
+      await doFetchRecommendationsTMDB(p1, p2, togetherMode);
+    }
+  }
+
+  // --- Recommendations (TMDB fallback) ----------------------------------------
+  async function doFetchRecommendationsTMDB(p1, p2, togetherMode) {
     if (!p1.length || !p2.length) { setRecommendations([]); return; }
     setLoading(true);
 
@@ -492,18 +567,20 @@ async function getContentRating(movieId) {
   }
 
   useEffect(() => {
+    // Fetch recommendations on tab load or explicit refresh
     if (person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
     }
-  }, [person1Movies, person2Movies, togethernessMode, recsKey, streamingOnly, selectedCountry]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [togethernessMode, recsKey, streamingOnly, selectedCountry]);
 
   // ===========================================================================
   // SUB-COMPONENTS
   // ===========================================================================
 
   const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null}) => (
-    <div className="group relative bg-zinc-900/50 rounded-xl overflow-hidden border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
-      <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800" style={{aspectRatio:"2/3"}}>
+    <div className="group relative bg-zinc-900/50 rounded-xl overflow-visible border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
+      <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800 rounded-xl" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
           ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
           : <div className="w-full h-full flex items-center justify-center"><Film className="w-12 h-12 text-zinc-600"/></div>
@@ -518,10 +595,11 @@ async function getContentRating(movieId) {
         {removeFromRecs && (
           <button 
             onClick={e=>{e.stopPropagation();removeFromRecs(movie.id);}} 
-            className="absolute top-0 right-0 bg-black/80 hover:bg-black text-white p-2 transition-colors"
+            className="absolute bg-black/90 hover:bg-black text-white p-1.5 rounded-full transition-colors z-20"
+            style={{top: "-8px", right: "-8px"}}
             title="Hide this recommendation"
           >
-            <X className="w-4 h-4"/>
+            <X className="w-3.5 h-3.5"/>
           </button>
         )}
         {/* Streaming badge */}
