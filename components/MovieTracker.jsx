@@ -122,6 +122,9 @@ export default function MovieTracker() {
   const [compatibilityScore, setCompatibilityScore] = useState(null);
   const [showCompatibilityModal, setShowCompatibilityModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showLetterboxdModal, setShowLetterboxdModal] = useState(false);
+  const [letterboxdUsername, setLetterboxdUsername] = useState("");
+  const [letterboxdLoading, setLetterboxdLoading] = useState(false);
   const [recsKey, setRecsKey] = useState(0);
   const [hiddenMovieIds, setHiddenMovieIds] = useState(new Set());
 
@@ -181,6 +184,78 @@ export default function MovieTracker() {
       } catch { alert("Error importing file."); }
     };
     reader.readAsText(file); event.target.value = "";
+  }
+
+  // --- Letterboxd Import ---------------------------------------------------
+  async function importLetterboxdCSV(file, personNum) {
+    setLetterboxdLoading(true);
+    const reader = new FileReader();
+    
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result;
+        const lines = text.split('\n');
+        
+        // Skip header row
+        const movieRows = lines.slice(1).filter(line => line.trim());
+        
+        const importedMovies = [];
+        
+        for (const row of movieRows.slice(0, 50)) { // Limit to 50 for performance
+          const columns = row.split(',');
+          // Letterboxd CSV format: Date,Name,Year,Letterboxd URI,Rating
+          const title = columns[1]?.replace(/"/g, '').trim();
+          const year = columns[2]?.replace(/"/g, '').trim();
+          
+          if (!title) continue;
+          
+          try {
+            // Search TMDB for this movie
+            const searchQuery = year ? `${title} ${year}` : title;
+            const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchQuery)}`);
+            const data = await res.json();
+            const movie = data.results?.[0];
+            
+            if (movie && isAllowed(movie)) {
+              const movieYear = parseInt((movie.release_date || "0").slice(0, 4));
+              if (movieYear >= 1985) {
+                const exclude = await shouldExcludeMovie(movie.id);
+                if (!exclude) {
+                  importedMovies.push(movie);
+                }
+              }
+            }
+            
+            // Small delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 100));
+          } catch (err) {
+            console.error(`Error importing ${title}:`, err);
+          }
+        }
+        
+        // Add to the selected person's list
+        if (personNum === 1) {
+          const existingIds = new Set(person1Movies.map(m => m.id));
+          const newMovies = importedMovies.filter(m => !existingIds.has(m.id));
+          setPerson1Movies([...person1Movies, ...newMovies]);
+        } else {
+          const existingIds = new Set(person2Movies.map(m => m.id));
+          const newMovies = importedMovies.filter(m => !existingIds.has(m.id));
+          setPerson2Movies([...person2Movies, ...newMovies]);
+        }
+        
+        alert(`Imported ${importedMovies.length} movies to ${personNum === 1 ? person1Name : person2Name}'s list!`);
+        setShowLetterboxdModal(false);
+        setLetterboxdLoading(false);
+        setActiveTab("compare");
+        
+      } catch (err) {
+        alert("Error parsing Letterboxd CSV. Please make sure you exported from Letterboxd.");
+        setLetterboxdLoading(false);
+      }
+    };
+    
+    reader.readAsText(file);
   }
 
   // --- TMDB ----------------------------------------------------------------
@@ -859,6 +934,88 @@ export default function MovieTracker() {
     </div>
   );
 
+  // --- LetterboxdModal -----------------------------------------------------
+  const LetterboxdModal = () => {
+    const [selectedPerson, setSelectedPerson] = useState(1);
+    const fileInputRef = useState(null);
+
+    return (
+      <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-lg w-full">
+          <h2 className="text-2xl font-bold mb-2 text-white flex items-center gap-2">
+            <Film className="w-7 h-7 text-orange-400"/>
+            Import from Letterboxd
+          </h2>
+          <p className="text-zinc-400 mb-6">Import your watched movies from a Letterboxd CSV export</p>
+          
+          <div className="bg-zinc-800/50 rounded-lg p-4 mb-6 border border-zinc-700">
+            <h3 className="text-white font-semibold mb-3">How to export from Letterboxd:</h3>
+            <ol className="text-zinc-300 text-sm space-y-2 list-decimal list-inside">
+              <li>Go to letterboxd.com and log in</li>
+              <li>Click Settings → Import & Export</li>
+              <li>Click "Export your data"</li>
+              <li>Download the ZIP file and extract it</li>
+              <li>Upload the <span className="text-orange-400 font-mono">watched.csv</span> or <span className="text-orange-400 font-mono">films.csv</span> file below</li>
+            </ol>
+          </div>
+
+          <div className="mb-6">
+            <p className="text-sm text-zinc-400 mb-3">Import to which list?</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setSelectedPerson(1)}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  selectedPerson === 1 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {person1Name}
+              </button>
+              <button 
+                onClick={() => setSelectedPerson(2)}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  selectedPerson === 2 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {person2Name}
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <label className="block w-full bg-orange-600 hover:bg-orange-500 text-white px-4 py-3 rounded-lg font-medium text-center cursor-pointer transition">
+              {letterboxdLoading ? "Importing..." : "Choose CSV File"}
+              <input 
+                type="file" 
+                accept=".csv"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) importLetterboxdCSV(file, selectedPerson);
+                }}
+                className="hidden"
+                disabled={letterboxdLoading}
+              />
+            </label>
+            <p className="text-xs text-zinc-500 mt-2 text-center">
+              Limited to first 50 movies for performance
+            </p>
+          </div>
+
+          <button 
+            onClick={() => setShowLetterboxdModal(false)} 
+            className="w-full bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium"
+            disabled={letterboxdLoading}
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   // ===========================================================================
   // MAIN RENDER
   // ===========================================================================
@@ -873,6 +1030,7 @@ export default function MovieTracker() {
               <p className="text-zinc-400">Discover movies you'll both love</p>
             </div>
             <div className="flex flex-wrap gap-3">
+              <button onClick={()=>setShowLetterboxdModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-orange-600 hover:bg-orange-500 text-white transition-all flex items-center gap-2"><Film className="w-5 h-5"/> Letterboxd</button>
               <label className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 cursor-pointer">
                 <Plus className="w-5 h-5"/> Import
                 <input type="file" accept=".json" onChange={handleImport} className="hidden"/>
@@ -1012,6 +1170,7 @@ export default function MovieTracker() {
         {showLoadModal && <LoadModal/>}
         {showCompatibilityModal && <CompatibilityModal/>}
         {showExportModal && <ExportModal/>}
+        {showLetterboxdModal && <LetterboxdModal/>}
       </div>
     </div>
   );
