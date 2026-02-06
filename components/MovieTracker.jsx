@@ -139,6 +139,8 @@ export default function MovieTracker() {
   const [runtimeFilter, setRuntimeFilter] = useState("all"); // "all", "short", "medium", "long"
   const [decadeFilter, setDecadeFilter] = useState("all");
   const [moodFilter, setMoodFilter] = useState("all"); // "all", "feel-good", "intense", "thoughtful"
+  const [showBatchActions, setShowBatchActions] = useState(false);
+  const [draggedMovie, setDraggedMovie] = useState(null);
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
@@ -550,6 +552,71 @@ export default function MovieTracker() {
       .sort((a, b) => b[1] - a[1])
       .map(([decade]) => parseInt(decade));
   }
+  
+  // --- Drag and Drop helpers -----------------------------------------------
+  function handleDragStart(movie, personNum) {
+    setDraggedMovie({ movie, personNum });
+  }
+  
+  function handleDragOver(e) {
+    e.preventDefault();
+  }
+  
+  function handleDrop(targetMovie, personNum) {
+    if (!draggedMovie || draggedMovie.personNum !== personNum) return;
+    
+    const list = personNum === 1 ? person1Movies : person2Movies;
+    const setList = personNum === 1 ? setPerson1Movies : setPerson2Movies;
+    
+    const draggedIndex = list.findIndex(m => m.id === draggedMovie.movie.id);
+    const targetIndex = list.findIndex(m => m.id === targetMovie.id);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    const newList = [...list];
+    const [removed] = newList.splice(draggedIndex, 1);
+    newList.splice(targetIndex, 0, removed);
+    
+    setList(newList);
+    setDraggedMovie(null);
+  }
+  
+  // --- Batch Actions -------------------------------------------------------
+  function batchRemoveByYear(personNum, year, operator) {
+    const list = personNum === 1 ? person1Movies : person2Movies;
+    const setList = personNum === 1 ? setPerson1Movies : setPerson2Movies;
+    
+    const filtered = list.filter(m => {
+      const movieYear = parseInt((m.release_date || "0").slice(0, 4));
+      if (operator === "before") return movieYear >= year;
+      if (operator === "after") return movieYear <= year;
+      return true;
+    });
+    
+    const removed = list.length - filtered.length;
+    setList(filtered);
+    return removed;
+  }
+  
+  function batchRemoveByGenre(personNum, genreId) {
+    const list = personNum === 1 ? person1Movies : person2Movies;
+    const setList = personNum === 1 ? setPerson1Movies : setPerson2Movies;
+    
+    const filtered = list.filter(m => !(m.genre_ids || []).includes(genreId));
+    const removed = list.length - filtered.length;
+    setList(filtered);
+    return removed;
+  }
+  
+  function batchHideRecommendationsByGenre(genreId) {
+    const toHide = recommendations
+      .filter(m => (m.genre_ids || []).includes(genreId))
+      .map(m => m.id);
+    
+    setHiddenMovieIds(prev => new Set([...prev, ...toHide]));
+    setRecommendations(recommendations.filter(m => !(m.genre_ids || []).includes(genreId)));
+    return toHide.length;
+  }
 
   // --- Compatibility -------------------------------------------------------
   function calcCompatibilityScore() {
@@ -784,7 +851,13 @@ export default function MovieTracker() {
     const isInWatchlist = watchlist.some(m => m.id === movie.id);
     
     return (
-    <div className="group relative bg-zinc-900/50 rounded-xl overflow-visible border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300">
+    <div 
+      className={`group relative bg-zinc-900/50 rounded-xl overflow-visible border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300 ${personNum ? 'cursor-move' : ''}`}
+      draggable={!!personNum}
+      onDragStart={() => personNum && handleDragStart(movie, personNum)}
+      onDragOver={handleDragOver}
+      onDrop={() => personNum && handleDrop(movie, personNum)}
+    >
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800 rounded-xl" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
           ? <img src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"/>
@@ -1170,6 +1243,157 @@ export default function MovieTracker() {
     );
   };
 
+  // --- BatchActionsModal ---------------------------------------------------
+  const BatchActionsModal = () => {
+    const [selectedPerson, setSelectedPerson] = useState(1);
+    const [actionType, setActionType] = useState("year");
+    const [yearValue, setYearValue] = useState("2000");
+    const [yearOperator, setYearOperator] = useState("before");
+    const [genreValue, setGenreValue] = useState("28");
+
+    const handleBatchAction = () => {
+      let removed = 0;
+      
+      if (actionType === "year") {
+        removed = batchRemoveByYear(selectedPerson, parseInt(yearValue), yearOperator);
+        alert(`Removed ${removed} movies ${yearOperator} ${yearValue} from ${selectedPerson === 1 ? person1Name : person2Name}'s list`);
+      } else if (actionType === "genre") {
+        removed = batchRemoveByGenre(selectedPerson, parseInt(genreValue));
+        const genreName = GENRE_NAMES[parseInt(genreValue)] || "Unknown";
+        alert(`Removed ${removed} ${genreName} movies from ${selectedPerson === 1 ? person1Name : person2Name}'s list`);
+      }
+      
+      if (removed > 0) {
+        setShowBatchActions(false);
+      }
+    };
+
+    return (
+      <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4" style={{backdropFilter:"blur(4px)"}}>
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 p-8 max-w-lg w-full">
+          <h2 className="text-2xl font-bold mb-2 text-white flex items-center gap-2">
+            <Zap className="w-7 h-7 text-yellow-400"/>
+            Batch Actions
+          </h2>
+          <p className="text-zinc-400 mb-6">Quickly remove multiple movies at once</p>
+          
+          {/* Select Person */}
+          <div className="mb-6">
+            <label className="text-sm text-zinc-400 mb-2 block">Which list?</label>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setSelectedPerson(1)}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  selectedPerson === 1 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {person1Name} ({person1Movies.length})
+              </button>
+              <button 
+                onClick={() => setSelectedPerson(2)}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  selectedPerson === 2 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                {person2Name} ({person2Movies.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Action Type */}
+          <div className="mb-6">
+            <label className="text-sm text-zinc-400 mb-2 block">Remove by:</label>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setActionType("year")}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  actionType === "year" 
+                    ? 'bg-red-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                Year
+              </button>
+              <button 
+                onClick={() => setActionType("genre")}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition ${
+                  actionType === "genre" 
+                    ? 'bg-red-600 text-white' 
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                }`}
+              >
+                Genre
+              </button>
+            </div>
+          </div>
+
+          {/* Year Settings */}
+          {actionType === "year" && (
+            <div className="mb-6 space-y-3">
+              <div>
+                <label className="text-sm text-zinc-400 mb-2 block">Remove movies:</label>
+                <select 
+                  value={yearOperator}
+                  onChange={(e) => setYearOperator(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  <option value="before">Before (and including)</option>
+                  <option value="after">After (and including)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm text-zinc-400 mb-2 block">Year:</label>
+                <input 
+                  type="number"
+                  value={yearValue}
+                  onChange={(e) => setYearValue(e.target.value)}
+                  min="1900"
+                  max="2030"
+                  className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Genre Settings */}
+          {actionType === "genre" && (
+            <div className="mb-6">
+              <label className="text-sm text-zinc-400 mb-2 block">Remove all movies with genre:</label>
+              <select 
+                value={genreValue}
+                onChange={(e) => setGenreValue(e.target.value)}
+                className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+              >
+                {Object.entries(GENRE_NAMES).map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setShowBatchActions(false)} 
+              className="flex-1 bg-zinc-800 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleBatchAction}
+              className="flex-1 bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-lg font-medium"
+            >
+              Remove Movies
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ===========================================================================
   // MAIN RENDER
   // ===========================================================================
@@ -1185,6 +1409,7 @@ export default function MovieTracker() {
             </div>
             <div className="flex flex-wrap gap-3">
               <button onClick={()=>setShowLetterboxdModal(true)} className="px-5 py-3 rounded-xl font-semibold bg-orange-600 hover:bg-orange-500 text-white transition-all flex items-center gap-2"><Film className="w-5 h-5"/> Letterboxd</button>
+              <button onClick={()=>setShowBatchActions(true)} className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2"><Zap className="w-5 h-5"/> Batch Actions</button>
               <label className="px-5 py-3 rounded-xl font-semibold bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800 transition-all flex items-center gap-2 cursor-pointer">
                 <Plus className="w-5 h-5"/> Import
                 <input type="file" accept=".json" onChange={handleImport} className="hidden"/>
@@ -1264,7 +1489,10 @@ export default function MovieTracker() {
             <div className="grid lg:grid-cols-2 gap-6">
               {[{num:1,name:person1Name,movies:person1Movies,color:"blue"},{num:2,name:person2Name,movies:person2Movies,color:"purple"}].map(p=>(
                 <div key={p.num} className="bg-zinc-900/50 rounded-2xl p-6 border border-zinc-800">
-                  <h2 className={`text-xl font-bold mb-4 ${p.color==="blue"?"text-blue-400":"text-purple-400"}`}>{p.name}'s List ({p.movies.length})</h2>
+                  <h2 className={`text-xl font-bold mb-2 ${p.color==="blue"?"text-blue-400":"text-purple-400"}`}>{p.name}'s List ({p.movies.length})</h2>
+                  {p.movies.length > 1 && (
+                    <p className="text-xs text-zinc-500 mb-4">💡 Drag and drop to reorder your favorites</p>
+                  )}
                   {p.movies.length===0 ? (
                     <div className="text-center py-16"><Film className="w-12 h-12 text-zinc-700 mx-auto mb-3"/><p className="text-zinc-500 mb-4">No movies yet</p><button onClick={()=>setActiveTab("search")} className={`${p.color==="blue"?"text-blue-400 hover:text-blue-300":"text-purple-400 hover:text-purple-300"} font-medium`}>Start adding movies →</button></div>
                   ) : (
@@ -1390,8 +1618,33 @@ export default function MovieTracker() {
                   </div>
                 </div>
                 
+                {/* Genre Toggle Filters */}
+                <div className="mt-4">
+                  <label className="text-xs text-zinc-500 mb-2 block">Filter by Genre (click to toggle)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      {id: 28, name: "Action"}, {id: 12, name: "Adventure"}, {id: 35, name: "Comedy"},
+                      {id: 80, name: "Crime"}, {id: 18, name: "Drama"}, {id: 14, name: "Fantasy"},
+                      {id: 27, name: "Horror"}, {id: 9648, name: "Mystery"}, {id: 10749, name: "Romance"},
+                      {id: 878, name: "Sci-Fi"}, {id: 53, name: "Thriller"}
+                    ].map(genre => (
+                      <button
+                        key={genre.id}
+                        onClick={() => toggleGenreFilter(genre.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          genreFilter.has(genre.id)
+                            ? "bg-purple-600 text-white shadow-lg shadow-purple-500/50"
+                            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                        }`}
+                      >
+                        {genre.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
                 {/* Active filters indicator */}
-                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all") && (
+                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all" || genreFilter.size > 0) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {runtimeFilter !== "all" && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
@@ -1406,6 +1659,11 @@ export default function MovieTracker() {
                     {moodFilter !== "all" && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
                         {moodFilter.charAt(0).toUpperCase() + moodFilter.slice(1).replace("-", " ")}
+                      </span>
+                    )}
+                    {genreFilter.size > 0 && (
+                      <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
+                        {genreFilter.size} genre{genreFilter.size > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
@@ -1443,6 +1701,7 @@ export default function MovieTracker() {
         {showCompatibilityModal && <CompatibilityModal/>}
         {showExportModal && <ExportModal/>}
         {showLetterboxdModal && <LetterboxdModal/>}
+        {showBatchActions && <BatchActionsModal/>}
       </div>
     </div>
   );
