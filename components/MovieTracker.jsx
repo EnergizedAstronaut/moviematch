@@ -141,6 +141,7 @@ export default function MovieTracker() {
   const [moodFilter, setMoodFilter] = useState("all"); // "all", "feel-good", "intense", "thoughtful"
   const [showBatchActions, setShowBatchActions] = useState(false);
   const [draggedMovie, setDraggedMovie] = useState(null);
+  const [dragOverMovie, setDragOverMovie] = useState(null);
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
@@ -849,14 +850,46 @@ export default function MovieTracker() {
 
   const MovieCard = ({movie,onSelect,showActions=false,personNum=null,matchIndicator=null,removeFromRecs=null,fromWatchlist=false}) => {
     const isInWatchlist = watchlist.some(m => m.id === movie.id);
+    const isDragging = draggedMovie?.movie?.id === movie.id && draggedMovie?.personNum === personNum;
+    const isDropTarget = dragOverMovie?.id === movie.id && draggedMovie?.personNum === personNum;
     
     return (
     <div 
-      className={`group relative bg-zinc-900/50 rounded-xl overflow-visible border border-zinc-800/50 hover:border-zinc-700 transition-all duration-300 ${personNum ? 'cursor-move' : ''}`}
+      className={`group relative bg-zinc-900/50 rounded-xl overflow-visible border transition-all duration-300 ${
+        personNum ? 'cursor-move' : ''
+      } ${
+        isDragging ? 'opacity-50 border-zinc-500' : 
+        isDropTarget ? 'border-purple-500 border-2 shadow-lg shadow-purple-500/50' :
+        'border-zinc-800/50 hover:border-zinc-700'
+      }`}
       draggable={!!personNum}
-      onDragStart={() => personNum && handleDragStart(movie, personNum)}
-      onDragOver={handleDragOver}
-      onDrop={() => personNum && handleDrop(movie, personNum)}
+      onDragStart={(e) => {
+        if (personNum) {
+          handleDragStart(movie, personNum);
+          e.dataTransfer.effectAllowed = 'move';
+        }
+      }}
+      onDragOver={(e) => {
+        if (personNum && draggedMovie) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          setDragOverMovie(movie);
+        }
+      }}
+      onDragLeave={() => {
+        setDragOverMovie(null);
+      }}
+      onDrop={(e) => {
+        if (personNum) {
+          e.preventDefault();
+          handleDrop(movie, personNum);
+          setDragOverMovie(null);
+        }
+      }}
+      onDragEnd={() => {
+        setDraggedMovie(null);
+        setDragOverMovie(null);
+      }}
     >
       <div onClick={()=>onSelect(movie)} className="relative cursor-pointer overflow-hidden bg-zinc-800 rounded-xl" style={{aspectRatio:"2/3"}}>
         {movie.poster_path
