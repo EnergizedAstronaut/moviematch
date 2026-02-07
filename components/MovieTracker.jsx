@@ -681,52 +681,23 @@ export default function MovieTracker() {
     return Math.abs(p1Score - p2Score) <= 1 ? "both" : (p1Score > p2Score ? "person1" : "person2");
   }
 
-  // --- Recommendations (TasteDive with TMDB fallback) ----------------------
+  // --- Recommendations (TMDB only - TasteDive has CORS issues in browser) ------
   async function doFetchRecommendations(p1, p2, togetherMode) {
     if (!p1.length || !p2.length) { 
-      setRecommendations([]); 
+      setRecommendations([]);
+      setLoading(false);
       return; 
     }
     
     setLoading(true);
     
     try {
-      // Try TasteDive first
-      const allMovieTitles = [...p1, ...p2].map(m => m.title);
-      const existingIds = new Set([...p1, ...p2].map(m => m.id));
-      
-      console.log("Trying TasteDive...");
-      const tasteDiveResults = await fetchTasteDiveRecommendations(
-        allMovieTitles,
-        new Set([...hiddenMovieIds, ...existingIds])
-      );
-      
-      // If TasteDive returns good results (6+), use them
-      if (tasteDiveResults && tasteDiveResults.length >= 6) {
-        console.log(`TasteDive success: ${tasteDiveResults.length} movies`);
-        
-        // Dedupe and limit to 12
-        const seen = new Set();
-        const unique = [];
-        for (const m of tasteDiveResults) {
-          if (!seen.has(m.id) && unique.length < 12) {
-            seen.add(m.id);
-            unique.push(m);
-          }
-        }
-        
-        setRecommendations(unique);
-        setLoading(false);
-        return;
-      }
-      
-      // Fall back to TMDB if TasteDive failed or returned too few
-      console.log("TasteDive insufficient, using TMDB fallback...");
+      // Use TMDB directly (TasteDive blocked by CORS in browser)
       await doFetchRecommendationsTMDB(p1, p2, togetherMode);
-      
     } catch (error) {
-      console.error("TasteDive error, using TMDB fallback:", error);
-      await doFetchRecommendationsTMDB(p1, p2, togetherMode);
+      console.error("Recommendations error:", error);
+      setRecommendations([]);
+      setLoading(false);
     }
   }
 
@@ -862,6 +833,10 @@ export default function MovieTracker() {
     // Fetch recommendations on tab load or explicit refresh
     if (person1Movies.length > 0 && person2Movies.length > 0) {
       doFetchRecommendations(person1Movies, person2Movies, togethernessMode);
+    } else {
+      // Stop loading if lists are empty
+      setLoading(false);
+      setRecommendations([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [togethernessMode, recsKey, streamingOnly, selectedCountry]);
