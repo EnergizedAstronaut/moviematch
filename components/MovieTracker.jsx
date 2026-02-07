@@ -25,6 +25,8 @@ const TMDB_API_KEY = "5792c693eccc10a144cad3c08930ecdb";
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TASTEDIVE_API_KEY = "1068398-Moviemat-42500EF7";
 const TASTEDIVE_BASE_URL = "https://tastedive.com/api/similar";
+const OMDB_API_KEY = "598543d";
+const OMDB_BASE_URL = "https://www.omdbapi.com";
 
 const COUNTRIES = [
   {code:"US",name:"United States",flag:"🇺🇸"},{code:"GB",name:"United Kingdom",flag:"🇬🇧"},
@@ -418,7 +420,27 @@ export default function MovieTracker() {
       const trailers = (videos.results||[]).filter(v=>v.site==="YouTube"&&v.type==="Trailer");
       const teasers  = (videos.results||[]).filter(v=>v.site==="YouTube"&&v.type==="Teaser");
       const trailer = trailers.find(v=>v.name.toLowerCase().includes("official")) || trailers[0] || teasers[0] || null;
-      setSelectedMovie({ ...details, cast:credits.cast?.slice(0,5)||[], director:credits.crew?.find(p=>p.job==="Director"), maturity:usRating, trailer:trailer?`https://www.youtube.com/watch?v=${trailer.key}`:null, imdb_id:extIds.imdb_id||null });
+      
+      // Fetch OMDb data for additional ratings
+      let omdbData = null;
+      if (extIds.imdb_id) {
+        try {
+          const omdbRes = await fetch(`${OMDB_BASE_URL}/?i=${extIds.imdb_id}&apikey=${OMDB_API_KEY}`);
+          omdbData = await omdbRes.json();
+        } catch(e) {
+          console.error("OMDb fetch error:", e);
+        }
+      }
+      
+      setSelectedMovie({ 
+        ...details, 
+        cast:credits.cast?.slice(0,5)||[], 
+        director:credits.crew?.find(p=>p.job==="Director"), 
+        maturity:usRating, 
+        trailer:trailer?`https://www.youtube.com/watch?v=${trailer.key}`:null, 
+        imdb_id:extIds.imdb_id||null,
+        omdb: omdbData
+      });
       setStreamingProviders(providers.results?.[selectedCountry]||null);
     } catch(e) {}
     setLoading(false);
@@ -1043,7 +1065,22 @@ export default function MovieTracker() {
                   <h2 className="text-2xl md:text-4xl font-bold text-white mb-2 leading-tight">{movie.title}</h2>
                   {movie.tagline && <p className="text-zinc-400 italic mb-4">{movie.tagline}</p>}
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-5">
-                    {movie.vote_average>0 && <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold"><Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}</div>}
+                    {movie.vote_average>0 && <div className="flex items-center gap-1.5 bg-yellow-500/20 text-yellow-400 rounded-lg px-3 py-1.5 font-semibold"><Star className="w-4 h-4" fill="currentColor"/> {movie.vote_average.toFixed(1)}<span className="text-xs text-zinc-500 ml-1">TMDB</span></div>}
+                    {movie.omdb?.imdbRating && movie.omdb.imdbRating !== "N/A" && (
+                      <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-400 rounded-lg px-3 py-1.5 font-semibold">
+                        <Star className="w-4 h-4" fill="currentColor"/> {movie.omdb.imdbRating}<span className="text-xs text-zinc-500 ml-1">IMDb</span>
+                      </div>
+                    )}
+                    {movie.omdb?.Ratings?.find(r => r.Source === "Rotten Tomatoes") && (
+                      <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 rounded-lg px-3 py-1.5 font-semibold">
+                        🍅 {movie.omdb.Ratings.find(r => r.Source === "Rotten Tomatoes").Value}
+                      </div>
+                    )}
+                    {movie.omdb?.Metascore && movie.omdb.Metascore !== "N/A" && (
+                      <div className="flex items-center gap-1.5 bg-green-500/20 text-green-400 rounded-lg px-3 py-1.5 font-semibold">
+                        {movie.omdb.Metascore}<span className="text-xs text-zinc-500 ml-1">Meta</span>
+                      </div>
+                    )}
                     <span className="text-zinc-400">{movie.release_date?.split("-")[0]}</span>
                     {movie.runtime && <span className="text-zinc-400">{movie.runtime} min</span>}
                     {movie.maturity&&movie.maturity!=="N/A" && <span className={`text-xs font-semibold border px-2 py-0.5 rounded ${maturityColor}`}>{movie.maturity}</span>}
