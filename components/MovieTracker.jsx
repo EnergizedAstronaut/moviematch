@@ -1011,9 +1011,16 @@ export default function MovieTracker() {
     };
     const maturityColor = movie.maturity==="R"?"border-red-500/60 text-red-400":movie.maturity==="PG-13"?"border-orange-500/60 text-orange-400":movie.maturity==="NC-17"?"border-purple-500/60 text-purple-400":"border-zinc-600 text-zinc-300";
     return (
-      <div className="fixed inset-0 bg-black/90 z-50 overflow-y-auto" style={{backdropFilter:"blur(4px)"}}>
+      <div 
+        className="fixed inset-0 bg-black/90 z-50 overflow-y-auto" 
+        style={{backdropFilter:"blur(4px)"}}
+        onClick={onClose}
+      >
         <div className="min-h-screen px-3 md:px-6 py-8 flex items-center justify-center">
-          <div className="max-w-5xl w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl">
+          <div 
+            className="max-w-5xl w-full bg-zinc-900 rounded-2xl overflow-hidden border border-zinc-800 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="relative">
               {movie.backdrop_path && (
                 <div className="relative" style={{minHeight:320}}>
@@ -1021,7 +1028,9 @@ export default function MovieTracker() {
                   <div className="absolute inset-0" style={{background:"linear-gradient(to top, #18181b, rgba(24,24,27,0.7) 50%, transparent)"}}/>
                 </div>
               )}
-              <button onClick={onClose} className="absolute top-4 right-4 bg-black/60 rounded-full p-2 hover:bg-black/80 transition"><X className="w-5 h-5 text-white"/></button>
+              <button onClick={onClose} className="absolute top-4 right-4 bg-black/80 hover:bg-black rounded-full p-3 transition-all z-50 shadow-xl">
+                <X className="w-6 h-6 text-white"/>
+              </button>
             </div>
             <div className="relative z-10 px-5 md:px-8 pb-8" style={{marginTop:-32}}>
               <div className="flex flex-col md:flex-row gap-6">
