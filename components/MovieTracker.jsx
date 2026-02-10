@@ -477,19 +477,30 @@ export default function MovieTracker() {
 
   async function fetchRedditTrending() {
     try {
+      console.log("Fetching Reddit trending...");
+      
       // Fetch from multiple subreddits
       const [suggestions, movies, letterboxd] = await Promise.all([
-        getRedditMovieSuggestions("moviesuggestions", 15),
-        getRedditMovieSuggestions("movies", 15),
-        getRedditMovieSuggestions("Letterboxd", 15),
+        getRedditMovieSuggestions("moviesuggestions", 10),
+        getRedditMovieSuggestions("movies", 10),
+        getRedditMovieSuggestions("Letterboxd", 10),
       ]);
       
+      console.log("Reddit results:", { suggestions, movies, letterboxd });
+      
       const allTitles = [...suggestions, ...movies, ...letterboxd];
-      const uniqueTitles = [...new Set(allTitles)].slice(0, 20); // Top 20 unique
+      const uniqueTitles = [...new Set(allTitles)].slice(0, 15); // Top 15 unique
+      
+      console.log("Unique titles:", uniqueTitles);
+      
+      if (uniqueTitles.length === 0) {
+        console.log("No titles found from Reddit");
+        return;
+      }
       
       // Convert Reddit titles to TMDB movies
       const tmdbMovies = [];
-      for (const title of uniqueTitles) {
+      for (const title of uniqueTitles.slice(0, 10)) { // Only try first 10
         try {
           const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`);
           const data = await res.json();
@@ -498,22 +509,20 @@ export default function MovieTracker() {
           if (movie && isAllowed(movie)) {
             const year = parseInt((movie.release_date || "0").slice(0, 4));
             if (year >= 1985) {
-              const exclude = await shouldExcludeMovie(movie.id);
-              if (!exclude) {
-                tmdbMovies.push(movie);
-              }
+              tmdbMovies.push(movie);
             }
           }
           
           // Small delay to avoid rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => setTimeout(resolve, 150));
         } catch (e) {
           console.error(`Error fetching ${title}:`, e);
         }
         
-        if (tmdbMovies.length >= 12) break; // Limit to 12
+        if (tmdbMovies.length >= 8) break; // Limit to 8
       }
       
+      console.log("TMDB movies found:", tmdbMovies.length);
       setRedditTrending(tmdbMovies);
     } catch (error) {
       console.error("Reddit trending fetch error:", error);
