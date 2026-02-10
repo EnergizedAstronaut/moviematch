@@ -259,10 +259,8 @@ export default function MovieTracker() {
   const [draggedMovie, setDraggedMovie] = useState(null);
   const [dragOverMovie, setDragOverMovie] = useState(null);
   
-  // NEW: Reddit trending and curated collections
+  // NEW: Reddit trending and streaming services
   const [redditTrending, setRedditTrending] = useState([]);
-  const [showA24Only, setShowA24Only] = useState(false);
-  const [showCriterionOnly, setShowCriterionOnly] = useState(false);
   const [selectedServices, setSelectedServices] = useState(new Set()); // Netflix, Hulu, etc.
 
   // --- Bootstrap -----------------------------------------------------------
@@ -728,20 +726,6 @@ export default function MovieTracker() {
         }
         return true;
       });
-    }
-    
-    // A24 filter
-    if (showA24Only) {
-      filtered = filtered.filter(m => 
-        m.production_companies?.some(c => c.id === A24_COMPANY_ID)
-      );
-    }
-    
-    // Criterion filter
-    if (showCriterionOnly) {
-      filtered = filtered.filter(m => 
-        m.production_companies?.some(c => c.id === CRITERION_COMPANY_ID)
-      );
     }
     
     // Streaming service filter
@@ -1687,16 +1671,6 @@ export default function MovieTracker() {
                 <Play className="w-5 h-5"/> Streaming Only
               </button>
 
-              {/* A24 toggle */}
-              <button onClick={()=>setShowA24Only(!showA24Only)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${showA24Only?"bg-red-600 text-white":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`}>
-                🎬 A24
-              </button>
-
-              {/* Criterion toggle */}
-              <button onClick={()=>setShowCriterionOnly(!showCriterionOnly)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${showCriterionOnly?"bg-blue-600 text-white":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`}>
-                🎞️ Criterion
-              </button>
-
               {/* Togetherness toggle */}
               <button onClick={()=>setTogethernessMode(!togethernessMode)} className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${togethernessMode?"text-white shadow-lg shadow-purple-500/50":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={togethernessMode?{background:"linear-gradient(to right, #db2777, #7c3aed)"}:{}}>
                 <Sparkles className="w-5 h-5" fill={togethernessMode?"currentColor":undefined}/> Togetherness
@@ -1955,7 +1929,7 @@ export default function MovieTracker() {
                 </div>
                 
                 {/* Active filters indicator */}
-                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all" || genreFilter.size > 0 || showA24Only || showCriterionOnly || selectedServices.size > 0) && (
+                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all" || genreFilter.size > 0 || selectedServices.size > 0) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {runtimeFilter !== "all" && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
@@ -1975,16 +1949,6 @@ export default function MovieTracker() {
                     {genreFilter.size > 0 && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
                         {genreFilter.size} genre{genreFilter.size > 1 ? 's' : ''}
-                      </span>
-                    )}
-                    {showA24Only && (
-                      <span className="text-xs bg-red-600/20 text-red-400 px-3 py-1 rounded-full">
-                        🎬 A24 Only
-                      </span>
-                    )}
-                    {showCriterionOnly && (
-                      <span className="text-xs bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full">
-                        🎞️ Criterion Only
                       </span>
                     )}
                     {selectedServices.size > 0 && (
