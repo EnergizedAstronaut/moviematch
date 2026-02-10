@@ -27,6 +27,8 @@ const TASTEDIVE_API_KEY = "1068398-Moviemat-42500EF7";
 const TASTEDIVE_BASE_URL = "https://tastedive.com/api/similar";
 const OMDB_API_KEY = "598543d";
 const OMDB_BASE_URL = "https://www.omdbapi.com";
+const RAPIDAPI_KEY = "1e2a60d9bamshf236cac23d1a9d3p147ee4jsn0dbd24bb36be";
+const STREAMING_API_BASE = "https://streaming-availability.p.rapidapi.com";
 
 const COUNTRIES = [
   {code:"US",name:"United States",flag:"🇺🇸"},{code:"GB",name:"United Kingdom",flag:"🇬🇧"},
@@ -44,6 +46,23 @@ const GENRE_NAMES = {
 };
 
 const ANIMATION_GENRE_ID = 16;
+
+// Production company IDs for curated collections
+const A24_COMPANY_ID = 41077;
+const CRITERION_COMPANY_ID = 1532;
+
+// Popular streaming services (provider IDs from TMDB)
+const STREAMING_SERVICES = {
+  8: { name: "Netflix", color: "#E50914" },
+  9: { name: "Amazon Prime", color: "#00A8E1" },
+  15: { name: "Hulu", color: "#1CE783" },
+  384: { name: "HBO Max", color: "#0038FF" },
+  337: { name: "Disney+", color: "#113CCF" },
+  350: { name: "Apple TV+", color: "#000000" },
+  531: { name: "Paramount+", color: "#0064FF" },
+  1899: { name: "Max", color: "#0038FF" },
+  387: { name: "Peacock", color: "#000000" },
+};
 
 function normalizeTitle(t) {
   return (t || "").toLowerCase().replace(/[\u2018\u2019\u201C\u201D]/g, "'").trim();
@@ -79,15 +98,110 @@ function countGenres(movies) {
   return counts;
 }
 
-// --- Streaming helper --------------------------------------------------------
-async function getStreamingInfo(movieId, country = "US") {
+// --- Streaming helper with RapidAPI backup ----------------------------------
+async function getStreamingInfo(movieId, country = "US", imdbId = null) {
   try {
+    // Try TMDB first (free, no rate limits)
     const res = await fetch(`${TMDB_BASE_URL}/movie/${movieId}/watch/providers?api_key=${TMDB_API_KEY}`);
     const data = await res.json();
     const r = data.results?.[country] || {};
-    return { flatrate: r.flatrate || [], rent: r.rent || [], buy: r.buy || [] };
+    
+    // If TMDB has streaming data, use it
+    if (r.flatrate?.length > 0 || r.rent?.length > 0 || r.buy?.length > 0) {
+      return { flatrate: r.flatrate || [], rent: r.rent || [], buy: r.buy || [] };
+    }
+    
+    // If TMDB has no data and we have IMDb ID, try RapidAPI as backup
+    if (imdbId) {
+      const rapidData = await getRapidAPIStreaming(imdbId, country.toLowerCase());
+      if (rapidData?.available) {
+        // Convert RapidAPI format to match TMDB format
+        return { 
+          flatrate: rapidData.data.filter(o => o.type === 'subscription' || o.type === 'free'),
+          rent: rapidData.data.filter(o => o.type === 'rent'),
+          buy: rapidData.data.filter(o => o.type === 'buy'),
+          _source: 'rapidapi'
+        };
+      }
+    }
+    
+    return { flatrate: [], rent: [], buy: [] };
   } catch {
     return { flatrate: [], rent: [], buy: [] };
+  }
+}
+
+// --- RapidAPI Streaming Availability helper ---------------------------------
+async function getRapidAPIStreaming(imdbId, country = "us") {
+  if (!imdbId) return null;
+  
+  try {
+    const response = await fetch(
+      `${STREAMING_API_BASE}/shows/movie/${imdbId}`,
+      {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-host': 'streaming-availability.p.rapidapi.com',
+          'x-rapidapi-key': RAPIDAPI_KEY
+        }
+      }
+    );
+    
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+    const countryData = data.streamingOptions?.[country];
+    
+    if (!countryData) return null;
+    
+    // Check if available on any streaming service
+    const hasStreaming = countryData.some(option => 
+      option.type === 'subscription' || option.type === 'free'
+    );
+    
+    return { available: hasStreaming, data: countryData };
+  } catch (error) {
+    console.error("RapidAPI streaming error:", error);
+    return null;
+  }
+}
+
+// --- Reddit trending movies helper ------------------------------------------
+async function getRedditMovieSuggestions(subreddit = "moviesuggestions", limit = 25) {
+  try {
+    const response = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}`);
+    const data = await response.json();
+    
+    const movieTitles = [];
+    
+    // Extract movie titles from post titles and text
+    data.data.children.forEach(post => {
+      const title = post.data.title;
+      const selftext = post.data.selftext || "";
+      
+      // Look for movie titles in brackets, quotes, or after common patterns
+      const patterns = [
+        /\[([^\]]+)\]/g,  // [Movie Title]
+        /"([^"]+)"/g,     // "Movie Title"
+        /watching ([^,\.!\?]+)/gi,  // "watching Movie Title"
+        /recommend ([^,\.!\?]+)/gi, // "recommend Movie Title"
+      ];
+      
+      patterns.forEach(pattern => {
+        let match;
+        while ((match = pattern.exec(title + " " + selftext)) !== null) {
+          const candidate = match[1].trim();
+          if (candidate.length > 3 && candidate.length < 50) {
+            movieTitles.push(candidate);
+          }
+        }
+      });
+    });
+    
+    return [...new Set(movieTitles)]; // Remove duplicates
+  } catch (error) {
+    console.error(`Reddit ${subreddit} fetch error:`, error);
+    return [];
   }
 }
 
@@ -144,9 +258,17 @@ export default function MovieTracker() {
   const [showBatchActions, setShowBatchActions] = useState(false);
   const [draggedMovie, setDraggedMovie] = useState(null);
   const [dragOverMovie, setDragOverMovie] = useState(null);
+  
+  // NEW: Reddit trending and curated collections
+  const [redditTrending, setRedditTrending] = useState([]);
+  const [showA24Only, setShowA24Only] = useState(false);
+  const [showCriterionOnly, setShowCriterionOnly] = useState(false);
+  const [selectedServices, setSelectedServices] = useState(new Set()); // Netflix, Hulu, etc.
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
+  
+  useEffect(() => { fetchRedditTrending(); }, []); // Fetch Reddit once on mount
 
   useEffect(() => {
     if (person1Movies.length > 0 && person2Movies.length > 0) setCompatibilityScore(calcCompatibilityScore());
@@ -355,6 +477,51 @@ export default function MovieTracker() {
     }
   }
 
+  async function fetchRedditTrending() {
+    try {
+      // Fetch from multiple subreddits
+      const [suggestions, movies, letterboxd] = await Promise.all([
+        getRedditMovieSuggestions("moviesuggestions", 15),
+        getRedditMovieSuggestions("movies", 15),
+        getRedditMovieSuggestions("Letterboxd", 15),
+      ]);
+      
+      const allTitles = [...suggestions, ...movies, ...letterboxd];
+      const uniqueTitles = [...new Set(allTitles)].slice(0, 20); // Top 20 unique
+      
+      // Convert Reddit titles to TMDB movies
+      const tmdbMovies = [];
+      for (const title of uniqueTitles) {
+        try {
+          const res = await fetch(`${TMDB_BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`);
+          const data = await res.json();
+          const movie = data.results?.[0];
+          
+          if (movie && isAllowed(movie)) {
+            const year = parseInt((movie.release_date || "0").slice(0, 4));
+            if (year >= 1985) {
+              const exclude = await shouldExcludeMovie(movie.id);
+              if (!exclude) {
+                tmdbMovies.push(movie);
+              }
+            }
+          }
+          
+          // Small delay to avoid rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (e) {
+          console.error(`Error fetching ${title}:`, e);
+        }
+        
+        if (tmdbMovies.length >= 12) break; // Limit to 12
+      }
+      
+      setRedditTrending(tmdbMovies);
+    } catch (error) {
+      console.error("Reddit trending fetch error:", error);
+    }
+  }
+
   async function fetchTrending() {
     setLoading(true);
     try {
@@ -421,6 +588,9 @@ export default function MovieTracker() {
       const teasers  = (videos.results||[]).filter(v=>v.site==="YouTube"&&v.type==="Teaser");
       const trailer = trailers.find(v=>v.name.toLowerCase().includes("official")) || trailers[0] || teasers[0] || null;
       
+      // Fetch streaming with IMDb ID for RapidAPI backup
+      const streamingData = await getStreamingInfo(movieId, selectedCountry, extIds.imdb_id);
+      
       // Fetch OMDb data for additional ratings
       let omdbData = null;
       if (extIds.imdb_id) {
@@ -441,7 +611,14 @@ export default function MovieTracker() {
         imdb_id:extIds.imdb_id||null,
         omdb: omdbData
       });
-      setStreamingProviders(providers.results?.[selectedCountry]||null);
+      
+      // Use the enhanced streaming data (TMDB or RapidAPI backup)
+      setStreamingProviders({
+        flatrate: streamingData.flatrate,
+        rent: streamingData.rent,
+        buy: streamingData.buy,
+        _source: streamingData._source
+      });
     } catch(e) {}
     setLoading(false);
   }
@@ -493,6 +670,16 @@ export default function MovieTracker() {
     setGenreFilter(newFilter);
   }
   
+  function toggleStreamingService(providerId) {
+    const newServices = new Set(selectedServices);
+    if (newServices.has(providerId)) {
+      newServices.delete(providerId);
+    } else {
+      newServices.add(providerId);
+    }
+    setSelectedServices(newServices);
+  }
+  
   function getFilteredRecommendations() {
     let filtered = [...recommendations];
     
@@ -540,6 +727,28 @@ export default function MovieTracker() {
           return genres.some(g => [18, 99, 9648, 36].includes(g));
         }
         return true;
+      });
+    }
+    
+    // A24 filter
+    if (showA24Only) {
+      filtered = filtered.filter(m => 
+        m.production_companies?.some(c => c.id === A24_COMPANY_ID)
+      );
+    }
+    
+    // Criterion filter
+    if (showCriterionOnly) {
+      filtered = filtered.filter(m => 
+        m.production_companies?.some(c => c.id === CRITERION_COMPANY_ID)
+      );
+    }
+    
+    // Streaming service filter
+    if (selectedServices.size > 0) {
+      filtered = filtered.filter(m => {
+        const providers = m._stream?.flatrate || [];
+        return providers.some(p => selectedServices.has(p.provider_id));
       });
     }
     
@@ -1478,6 +1687,16 @@ export default function MovieTracker() {
                 <Play className="w-5 h-5"/> Streaming Only
               </button>
 
+              {/* A24 toggle */}
+              <button onClick={()=>setShowA24Only(!showA24Only)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${showA24Only?"bg-red-600 text-white":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`}>
+                🎬 A24
+              </button>
+
+              {/* Criterion toggle */}
+              <button onClick={()=>setShowCriterionOnly(!showCriterionOnly)} className={`px-5 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${showCriterionOnly?"bg-blue-600 text-white":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`}>
+                🎞️ Criterion
+              </button>
+
               {/* Togetherness toggle */}
               <button onClick={()=>setTogethernessMode(!togethernessMode)} className={`px-6 py-3 rounded-xl font-semibold transition-all flex items-center gap-2 ${togethernessMode?"text-white shadow-lg shadow-purple-500/50":"bg-zinc-900 text-zinc-400 hover:bg-zinc-800 border border-zinc-800"}`} style={togethernessMode?{background:"linear-gradient(to right, #db2777, #7c3aed)"}:{}}>
                 <Sparkles className="w-5 h-5" fill={togethernessMode?"currentColor":undefined}/> Togetherness
@@ -1523,9 +1742,26 @@ export default function MovieTracker() {
             {searchResults.length>0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{searchResults.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
             ) : (
-              <div>
-                <div className="flex items-center gap-3 mb-6"><TrendingUp className="w-6 h-6 text-red-500"/><h2 className="text-2xl font-bold">Trending This Week</h2></div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{trendingMovies.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
+              <div className="space-y-8">
+                {/* Reddit Trending */}
+                {redditTrending.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <span className="text-2xl">🔥</span>
+                      <h2 className="text-2xl font-bold">Trending on Reddit</h2>
+                      <span className="text-sm text-zinc-500">r/moviesuggestions • r/movies • r/Letterboxd</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                      {redditTrending.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}
+                    </div>
+                  </div>
+                )}
+                
+                {/* TMDB Trending */}
+                <div>
+                  <div className="flex items-center gap-3 mb-6"><TrendingUp className="w-6 h-6 text-red-500"/><h2 className="text-2xl font-bold">Trending This Week</h2></div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{trendingMovies.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
+                </div>
               </div>
             )}
           </div>
@@ -1697,8 +1933,29 @@ export default function MovieTracker() {
                   </div>
                 </div>
                 
+                {/* Streaming Service Filters */}
+                <div className="mt-4">
+                  <label className="text-xs text-zinc-500 mb-2 block">Available on (click to toggle)</label>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(STREAMING_SERVICES).map(([id, service]) => (
+                      <button
+                        key={id}
+                        onClick={() => toggleStreamingService(parseInt(id))}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          selectedServices.has(parseInt(id))
+                            ? "bg-green-600 text-white shadow-lg shadow-green-500/50"
+                            : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                        }`}
+                        style={selectedServices.has(parseInt(id)) ? {backgroundColor: service.color} : {}}
+                      >
+                        {service.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
                 {/* Active filters indicator */}
-                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all" || genreFilter.size > 0) && (
+                {(runtimeFilter !== "all" || decadeFilter !== "all" || moodFilter !== "all" || genreFilter.size > 0 || showA24Only || showCriterionOnly || selectedServices.size > 0) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {runtimeFilter !== "all" && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
@@ -1718,6 +1975,21 @@ export default function MovieTracker() {
                     {genreFilter.size > 0 && (
                       <span className="text-xs bg-purple-600/20 text-purple-400 px-3 py-1 rounded-full">
                         {genreFilter.size} genre{genreFilter.size > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {showA24Only && (
+                      <span className="text-xs bg-red-600/20 text-red-400 px-3 py-1 rounded-full">
+                        🎬 A24 Only
+                      </span>
+                    )}
+                    {showCriterionOnly && (
+                      <span className="text-xs bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full">
+                        🎞️ Criterion Only
+                      </span>
+                    )}
+                    {selectedServices.size > 0 && (
+                      <span className="text-xs bg-green-600/20 text-green-400 px-3 py-1 rounded-full">
+                        {selectedServices.size} service{selectedServices.size > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
