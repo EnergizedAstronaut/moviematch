@@ -166,44 +166,7 @@ async function getRapidAPIStreaming(imdbId, country = "us") {
   }
 }
 
-// --- Reddit trending movies helper ------------------------------------------
-async function getRedditMovieSuggestions(subreddit = "moviesuggestions", limit = 25) {
-  try {
-    const response = await fetch(`https://www.reddit.com/r/${subreddit}/hot.json?limit=${limit}`);
-    const data = await response.json();
-    
-    const movieTitles = [];
-    
-    // Extract movie titles from post titles and text
-    data.data.children.forEach(post => {
-      const title = post.data.title;
-      const selftext = post.data.selftext || "";
-      
-      // Look for movie titles in brackets, quotes, or after common patterns
-      const patterns = [
-        /\[([^\]]+)\]/g,  // [Movie Title]
-        /"([^"]+)"/g,     // "Movie Title"
-        /watching ([^,\.!\?]+)/gi,  // "watching Movie Title"
-        /recommend ([^,\.!\?]+)/gi, // "recommend Movie Title"
-      ];
-      
-      patterns.forEach(pattern => {
-        let match;
-        while ((match = pattern.exec(title + " " + selftext)) !== null) {
-          const candidate = match[1].trim();
-          if (candidate.length > 3 && candidate.length < 50) {
-            movieTitles.push(candidate);
-          }
-        }
-      });
-    });
-    
-    return [...new Set(movieTitles)]; // Remove duplicates
-  } catch (error) {
-    console.error(`Reddit ${subreddit} fetch error:`, error);
-    return [];
-  }
-}
+
 
 // Score boost when both persons' lists share a streaming platform
 function sharedProviderBonus(p1Flatrate, p2Flatrate) {
@@ -259,9 +222,7 @@ export default function MovieTracker() {
   const [draggedMovie, setDraggedMovie] = useState(null);
   const [dragOverMovie, setDragOverMovie] = useState(null);
   
-  // NEW: Reddit trending and streaming services
-  const [redditTrending, setRedditTrending] = useState([]);
-  const [selectedServices, setSelectedServices] = useState(new Set()); // Netflix, Hulu, etc.
+ 
 
   // --- Bootstrap -----------------------------------------------------------
   useEffect(() => { fetchTrending(); }, [selectedCountry, streamingOnly]);
@@ -1726,19 +1687,6 @@ export default function MovieTracker() {
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">{searchResults.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}</div>
             ) : (
               <div className="space-y-8">
-                {/* Reddit Trending */}
-                {redditTrending.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <span className="text-2xl">🔥</span>
-                      <h2 className="text-2xl font-bold">Trending on Reddit</h2>
-                      <span className="text-sm text-zinc-500">r/moviesuggestions • r/movies • r/Letterboxd</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                      {redditTrending.map(m=><MovieCard key={m.id} movie={m} onSelect={mv=>fetchMovieDetails(mv.id)} showActions/>)}
-                    </div>
-                  </div>
-                )}
                 
                 {/* TMDB Trending */}
                 <div>
